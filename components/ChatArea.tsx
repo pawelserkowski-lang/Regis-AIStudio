@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Send, Bot, User, BookmarkPlus, Loader2, Paperclip, Image as ImageIcon, Video, Mic, Sparkles, X, MapPin, Globe, Volume2, StopCircle, CornerDownLeft, Smile, Radio } from 'lucide-react';
+import { Send, Bot, User, BookmarkPlus, Loader2, Paperclip, Image as ImageIcon, Video, Mic, Sparkles, X, MapPin, Globe, Volume2, StopCircle, CornerDownLeft, Smile, Radio, Search } from 'lucide-react';
 import EmojiPicker, { EmojiClickData, EmojiStyle } from 'emoji-picker-react';
 import { Message, Sender, Attachment } from '../types';
 import { sendMessageStream, generateImage, generateVideo, generateSpeech, connectLiveSession, transcribeAudio } from '../services/geminiService';
@@ -19,6 +19,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [liveSession, setLiveSession] = useState<any>(null);
   
+  // Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -27,13 +31,24 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
   const audioContextRef = useRef<AudioContext | null>(null);
   const nextAudioStartTimeRef = useRef<number>(0);
 
+  // Filter messages based on search query
+  const displayedMessages = React.useMemo(() => {
+    if (!searchQuery) return messages;
+    return messages.filter(msg => 
+        msg.text.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [messages, searchQuery]);
+
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Only scroll if not searching to allow users to read history
+    if (!searchQuery) {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, attachments]);
+  }, [messages, attachments, searchQuery]);
 
   useEffect(() => {
     return () => {
@@ -72,6 +87,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
 
   const handleSend = async () => {
     if ((!input.trim() && attachments.length === 0) || isLoading) return;
+
+    // Reset search when sending new message so user sees it
+    if (searchQuery) {
+        setSearchQuery('');
+        setShowSearch(false);
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -314,7 +335,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
             <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
                 <Bot className="text-emerald-400" size={20} />
             </div>
-            <div>
+            <div className="hidden md:block">
                 <h2 className="text-lg font-bold text-slate-100 leading-tight font-mono">Regis_Assistant</h2>
                 <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_5px_#10b981]"></span>
@@ -322,22 +343,65 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
                 </div>
             </div>
         </div>
-        <button 
-            onClick={handleToggleLive}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium text-sm transition-all border ${
-                isLiveMode 
-                ? 'bg-red-500/10 text-red-400 border-red-500/50' 
-                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]'
-            }`}
-        >
-            <Radio size={16} className={isLiveMode ? "animate-pulse" : ""} />
-            {isLiveMode ? 'LIVE ACTIVE' : 'INITIATE LIVE'}
-        </button>
+
+        <div className="flex items-center gap-3">
+            {/* Search Bar */}
+            <div className={`flex items-center transition-all duration-300 ${showSearch ? 'w-full md:w-64 bg-black/60 border border-emerald-500/30 rounded-full px-3 py-1.5' : 'w-auto'}`}>
+                {showSearch ? (
+                    <>
+                        <Search size={16} className="text-emerald-500/70 mr-2 flex-shrink-0" />
+                        <input 
+                            autoFocus
+                            type="text" 
+                            placeholder="Search logs..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-transparent border-none focus:ring-0 text-sm text-emerald-100 placeholder:text-emerald-500/30 w-full p-0"
+                        />
+                        <button 
+                            onClick={() => { setShowSearch(false); setSearchQuery(''); }}
+                            className="ml-2 text-emerald-500/50 hover:text-emerald-400"
+                        >
+                            <X size={14} />
+                        </button>
+                    </>
+                ) : (
+                    <button 
+                        onClick={() => setShowSearch(true)}
+                        className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-full transition-colors"
+                        title="Search Chat History"
+                    >
+                        <Search size={20} />
+                    </button>
+                )}
+            </div>
+
+            <button 
+                onClick={handleToggleLive}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium text-sm transition-all border whitespace-nowrap ${
+                    isLiveMode 
+                    ? 'bg-red-500/10 text-red-400 border-red-500/50' 
+                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                }`}
+            >
+                <Radio size={16} className={isLiveMode ? "animate-pulse" : ""} />
+                <span className="hidden md:inline">{isLiveMode ? 'LIVE ACTIVE' : 'LIVE MODE'}</span>
+            </button>
+        </div>
       </div>
 
       {/* Messages List */}
       <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 scroll-smooth scrollbar-thin scrollbar-thumb-emerald-900 scrollbar-track-transparent">
-        {messages.map((msg) => (
+        {/* Search Results Filter Banner */}
+        {searchQuery && (
+            <div className="flex justify-center mb-4">
+                <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-4 py-1.5 rounded-full text-xs font-mono tracking-wide shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                    FILTERING: {displayedMessages.length} RESULT(S) FOUND
+                </span>
+            </div>
+        )}
+
+        {displayedMessages.map((msg) => (
           <div
             key={msg.id}
             className={`flex ${msg.sender === Sender.USER ? 'justify-end' : 'justify-start'}`}
@@ -359,10 +423,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
                   </span>
 
                   {/* Message Bubble */}
-                  <div className={`group relative p-5 rounded-2xl shadow-lg backdrop-blur-sm ${
+                  <div className={`group relative p-5 rounded-2xl shadow-lg backdrop-blur-sm transition-all duration-300 ${
                     msg.sender === Sender.USER 
-                      ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-tr-sm border border-emerald-400/20' 
-                      : 'bg-black/40 text-slate-200 border border-white/10 rounded-tl-sm'
+                      ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-tr-sm border border-emerald-400/20 hover:brightness-110 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]' 
+                      : 'bg-black/40 text-slate-200 border border-white/10 rounded-tl-sm hover:bg-white/5 hover:border-emerald-500/30 hover:shadow-[0_0_15px_rgba(16,185,129,0.15)]'
                   }`}>
                     {/* Attachments */}
                     {msg.attachments?.map((att, idx) => (
@@ -424,6 +488,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
             </div>
           </div>
         ))}
+        {displayedMessages.length === 0 && searchQuery && (
+             <div className="text-center text-slate-500 py-10">
+                 <p className="font-mono text-sm">NO DATA MATCHING QUERY "{searchQuery}"</p>
+             </div>
+        )}
+
         {isLoading && messages[messages.length-1]?.sender === Sender.USER && (
            <div className="flex items-center gap-3 text-slate-400 text-sm ml-16 bg-black/40 px-4 py-2 rounded-full w-fit border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
              <Loader2 size={16} className="animate-spin text-emerald-500" />
