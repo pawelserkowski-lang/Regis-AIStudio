@@ -1,7 +1,28 @@
 import { GoogleGenAI, Chat, GenerateContentResponse, Modality, LiveServerMessage } from "@google/genai";
 
+// --- System Logger ---
+const SYSTEM_START = Date.now();
+
+export const systemLog = (module: string, action: string, status: 'INFO' | 'WARN' | 'ERROR' | 'SUCCESS', data?: any) => {
+  const uptime = ((Date.now() - SYSTEM_START) / 1000).toFixed(3);
+  const colorMap = {
+    'INFO': 'color: #94a3b8', // Slate 400
+    'WARN': 'color: #facc15', // Yellow 400
+    'ERROR': 'color: #f87171', // Red 400
+    'SUCCESS': 'color: #34d399' // Emerald 400
+  };
+  
+  console.log(
+    `%c[${uptime}s] [${module}]::${action} >> ${status}`, 
+    `${colorMap[status]}; font-family: monospace; font-weight: bold;`, 
+    data ? data : ''
+  );
+};
+
 // Initialize Gemini AI
+systemLog('CORE', 'API_CLIENT', 'INFO', 'Initializing GoogleGenAI Client...');
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+systemLog('CORE', 'API_CLIENT', 'SUCCESS', 'Client Ready');
 
 // --- Chat Session Management ---
 
@@ -27,6 +48,7 @@ DO NOT ASK THE USER TO PASTE CODE.
 
 const getChatSession = (): Chat => {
   if (!chatSession) {
+    systemLog('CHAT_ENGINE', 'SESSION_INIT', 'INFO', 'Creating new Gemini 3 Pro session...');
     chatSession = ai.chats.create({
       model: 'gemini-3-pro-preview', // Upgraded to Pro for complex tasks/chatbot
       config: {
@@ -50,6 +72,7 @@ const getChatSession = (): Chat => {
         ]
       },
     });
+    systemLog('CHAT_ENGINE', 'SESSION_INIT', 'SUCCESS', 'Session Established');
   }
   return chatSession;
 };
@@ -61,6 +84,8 @@ export const sendMessageStream = async (
 ): Promise<string> => {
   const chat = getChatSession();
   let fullText = "";
+  
+  systemLog('CHAT_ENGINE', 'SEND_MESSAGE', 'INFO', { length: message.length, attachments: attachments.length });
 
   try {
     const parts: any[] = [{ text: message }];
@@ -79,6 +104,8 @@ export const sendMessageStream = async (
         parts: parts 
     }); // Chat.sendMessageStream takes parts directly or a message string
     
+    systemLog('CHAT_ENGINE', 'STREAM_START', 'INFO');
+
     for await (const chunk of result) {
       const c = chunk as GenerateContentResponse;
       const text = c.text || "";
@@ -86,11 +113,15 @@ export const sendMessageStream = async (
       
       // Extract grounding metadata if present
       const grounding = c.candidates?.[0]?.groundingMetadata;
+      if (grounding) {
+         systemLog('CHAT_ENGINE', 'GROUNDING_RX', 'INFO', grounding);
+      }
       
       onChunk(text, grounding);
     }
+    systemLog('CHAT_ENGINE', 'STREAM_COMPLETE', 'SUCCESS', { totalLength: fullText.length });
   } catch (error) {
-    console.error("Error sending message to Gemini:", error);
+    systemLog('CHAT_ENGINE', 'STREAM_ERROR', 'ERROR', error);
     throw error;
   }
 
@@ -98,14 +129,17 @@ export const sendMessageStream = async (
 };
 
 export const generateTitleForRegistry = async (content: string): Promise<string> => {
+  systemLog('AUTO_TAGGER', 'GEN_TITLE', 'INFO', 'Analyzing content signature...');
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `Generate a short, concise title (max 5 words) for the following content, do not add quotes: ${content.substring(0, 500)}...`,
     });
-    return response.text?.trim() || "Untitled Note";
+    const title = response.text?.trim() || "Untitled Note";
+    systemLog('AUTO_TAGGER', 'GEN_TITLE', 'SUCCESS', title);
+    return title;
   } catch (error) {
-    console.error("Error generating title:", error);
+    systemLog('AUTO_TAGGER', 'GEN_TITLE', 'ERROR', error);
     return "Untitled Note";
   }
 };
@@ -116,9 +150,11 @@ export const generateImage = async (
   prompt: string, 
   settings: { width?: string, height?: string, aspectRatio?: string, isEditing?: boolean, imageBase64?: string }
 ): Promise<string> => {
+  systemLog('IMG_GEN', 'START', 'INFO', { prompt, settings });
   try {
     // Editing Mode (Flash Image)
     if (settings.isEditing && settings.imageBase64) {
+        systemLog('IMG_GEN', 'MODE_SWITCH', 'INFO', 'Editing Mode (Gemini Flash Image)');
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: {
@@ -132,6 +168,7 @@ export const generateImage = async (
         const parts = response.candidates?.[0]?.content?.parts || [];
         for (const part of parts) {
             if (part.inlineData) {
+                systemLog('IMG_GEN', 'COMPLETE', 'SUCCESS', 'Image Data Received');
                 return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
             }
         }
@@ -139,6 +176,7 @@ export const generateImage = async (
     } 
     // Generation Mode (Pro Image)
     else {
+        systemLog('IMG_GEN', 'MODE_SWITCH', 'INFO', 'Creation Mode (Gemini 3 Pro)');
         // gemini-3-pro-image-preview
         const response = await ai.models.generateContent({
             model: 'gemini-3-pro-image-preview',
@@ -153,13 +191,14 @@ export const generateImage = async (
          const parts = response.candidates?.[0]?.content?.parts || [];
         for (const part of parts) {
             if (part.inlineData) {
+                systemLog('IMG_GEN', 'COMPLETE', 'SUCCESS', 'Image Data Received');
                 return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
             }
         }
          throw new Error("No image generated");
     }
   } catch (error) {
-    console.error("Image generation failed:", error);
+    systemLog('IMG_GEN', 'ERROR', 'ERROR', error);
     throw error;
   }
 };
@@ -168,6 +207,7 @@ export const generateVideo = async (
     prompt: string,
     aspectRatio: '16:9' | '9:16'
 ): Promise<string> => {
+    systemLog('VIDEO_GEN', 'START', 'INFO', { prompt, aspectRatio });
     try {
         let operation = await ai.models.generateVideos({
             model: 'veo-3.1-fast-generate-preview',
@@ -179,10 +219,12 @@ export const generateVideo = async (
             }
         });
 
+        systemLog('VIDEO_GEN', 'POLLING', 'INFO', 'Waiting for Veo rendering...');
         // Polling
         while (!operation.done) {
             await new Promise(resolve => setTimeout(resolve, 5000));
             operation = await ai.operations.getVideosOperation({ operation: operation });
+            systemLog('VIDEO_GEN', 'POLLING', 'INFO', '...');
         }
 
         const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
@@ -191,14 +233,16 @@ export const generateVideo = async (
         // Fetch actual bytes
         const response = await fetch(`${videoUri}&key=${process.env.API_KEY}`);
         const blob = await response.blob();
+        systemLog('VIDEO_GEN', 'COMPLETE', 'SUCCESS', 'Video Blob Created');
         return URL.createObjectURL(blob);
     } catch (error) {
-        console.error("Video generation failed:", error);
+        systemLog('VIDEO_GEN', 'ERROR', 'ERROR', error);
         throw error;
     }
 }
 
 export const generateSpeech = async (text: string): Promise<string> => {
+    systemLog('TTS_ENGINE', 'SYNTHESIS', 'INFO', { textLength: text.length });
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash-preview-tts",
@@ -215,14 +259,16 @@ export const generateSpeech = async (text: string): Promise<string> => {
         
         const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
         if (!base64Audio) throw new Error("No audio data generated");
+        systemLog('TTS_ENGINE', 'SYNTHESIS', 'SUCCESS', 'Audio Buffer Ready');
         return `data:audio/wav;base64,${base64Audio}`; // Assuming format
     } catch (error) {
-        console.error("TTS failed:", error);
+        systemLog('TTS_ENGINE', 'ERROR', 'ERROR', error);
         throw error;
     }
 }
 
 export const transcribeAudio = async (audioBase64: string): Promise<string> => {
+    systemLog('AUDIO_PROC', 'TRANSCRIPT', 'INFO', 'Processing Audio Packet...');
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
@@ -233,9 +279,11 @@ export const transcribeAudio = async (audioBase64: string): Promise<string> => {
                 ]
             }
         });
-        return response.text || "";
+        const text = response.text || "";
+        systemLog('AUDIO_PROC', 'TRANSCRIPT', 'SUCCESS', { textLength: text.length });
+        return text;
     } catch (error) {
-        console.error("Transcription failed:", error);
+        systemLog('AUDIO_PROC', 'ERROR', 'ERROR', error);
         throw error;
     }
 }
@@ -247,6 +295,7 @@ export const connectLiveSession = async (
     onAudioData: (base64: string) => void,
     onClose: () => void
 ) => {
+    systemLog('LIVE_LINK', 'CONNECT', 'INFO', 'Establishing WebSocket Handshake...');
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     
@@ -265,7 +314,7 @@ export const connectLiveSession = async (
         },
         callbacks: {
             onopen: () => {
-                console.log("Live Session Open");
+                systemLog('LIVE_LINK', 'STATUS', 'SUCCESS', 'Connection Secured. Streaming Audio.');
                 // Start pumping audio
                 processor.onaudioprocess = (e) => {
                     const inputData = e.inputBuffer.getChannelData(0);
@@ -300,18 +349,19 @@ export const connectLiveSession = async (
             onmessage: (msg: LiveServerMessage) => {
                 const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
                 if (audioData) {
+                    // systemLog('LIVE_LINK', 'RX', 'INFO', 'Audio Chunk Received'); // Too verbose for normal logs
                     onAudioData(audioData);
                 }
             },
             onclose: () => {
-                console.log("Live Session Closed");
+                systemLog('LIVE_LINK', 'STATUS', 'WARN', 'Session Disconnected by Server');
                 stream.getTracks().forEach(t => t.stop());
                 source.disconnect();
                 processor.disconnect();
                 onClose();
             },
             onerror: (err) => {
-                console.error("Live Session Error", err);
+                systemLog('LIVE_LINK', 'ERROR', 'ERROR', err);
                 onClose();
             }
         }
@@ -319,6 +369,7 @@ export const connectLiveSession = async (
 
     return {
         close: async () => {
+            systemLog('LIVE_LINK', 'CLOSE', 'INFO', 'User Terminated Connection');
             const session = await sessionPromise;
             session.close();
             stream.getTracks().forEach(t => t.stop());
@@ -330,16 +381,15 @@ export const connectLiveSession = async (
 // --- System Operations Mocks ---
 
 export const readFileContent = async (filePath: string): Promise<string> => {
-  console.log(`[Regis Mock] Reading file: ${filePath}`);
+  systemLog('FS_LAYER', 'READ', 'INFO', filePath);
   return `[Mock Content of ${filePath}]`;
 };
 
 export const writeFileContent = async (filePath: string, content: string): Promise<void> => {
-  console.log(`[Regis Mock] Writing to file: ${filePath}`);
-  console.log(content);
+  systemLog('FS_LAYER', 'WRITE', 'WARN', `Write to ${filePath} intercepted (Simulation Mode)`);
 };
 
 export const executeSystemCommand = async (command: string): Promise<string> => {
-  console.warn('[Regis Mock] Executing system command:', command);
+  systemLog('KERNEL', 'EXEC', 'WARN', `Command: ${command}`);
   return `Command executed (simulated): ${command}`;
 };

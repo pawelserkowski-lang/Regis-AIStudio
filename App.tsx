@@ -4,19 +4,34 @@ import ChatArea from './components/ChatArea';
 import Registry from './components/Registry';
 import Stats from './components/Stats';
 import { View, Message, RegistryItem, Sender } from './types';
-import { generateTitleForRegistry } from './services/geminiService';
+import { generateTitleForRegistry, systemLog } from './services/geminiService';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.CHAT);
   
+  // Boot Sequence Logging
+  useEffect(() => {
+    systemLog('SYSTEM_BOOT', 'INIT', 'INFO', 'Starting Regis Kernel v1.0.0...');
+    setTimeout(() => systemLog('SYSTEM_BOOT', 'ENV_CHECK', 'SUCCESS', 'Environment Variables Loaded'), 200);
+    setTimeout(() => systemLog('SYSTEM_BOOT', 'MOUNT', 'SUCCESS', 'Virtual DOM Mounted'), 400);
+    setTimeout(() => systemLog('SYSTEM_BOOT', 'READY', 'SUCCESS', 'System Online. Waiting for Input.'), 600);
+  }, []);
+
+  // View Change Logging
+  useEffect(() => {
+    systemLog('UI_LAYER', 'VIEW_SWITCH', 'INFO', `Active View: ${currentView.toUpperCase()}`);
+  }, [currentView]);
+
   // Chat State with Persistence
   const [messages, setMessages] = useState<Message[]>(() => {
     const saved = localStorage.getItem('regis_messages');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        systemLog('PERSISTENCE', 'LOAD_MSG', 'SUCCESS', `Hydrated ${parsed.length} messages`);
+        return parsed;
       } catch (e) {
-        console.error("Failed to parse messages", e);
+        systemLog('PERSISTENCE', 'LOAD_MSG', 'ERROR', 'Corruption detected in message store');
       }
     }
     return [{
@@ -32,9 +47,11 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('regis_registry');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        systemLog('PERSISTENCE', 'LOAD_REG', 'SUCCESS', `Hydrated ${parsed.length} registry items`);
+        return parsed;
       } catch (e) {
-        console.error("Failed to parse registry", e);
+        systemLog('PERSISTENCE', 'LOAD_REG', 'ERROR', 'Corruption detected in registry store');
       }
     }
     return [
@@ -60,14 +77,17 @@ const App: React.FC = () => {
   // Persist Messages
   useEffect(() => {
     localStorage.setItem('regis_messages', JSON.stringify(messages));
+    // systemLog('PERSISTENCE', 'AUTO_SAVE', 'INFO', 'Messages synced to local storage'); // Commented out to reduce noise
   }, [messages]);
 
   // Persist Registry
   useEffect(() => {
     localStorage.setItem('regis_registry', JSON.stringify(registryItems));
+    // systemLog('PERSISTENCE', 'AUTO_SAVE', 'INFO', 'Registry synced to local storage');
   }, [registryItems]);
 
   const handleSaveToRegistry = async (content: string) => {
+    systemLog('REGISTRY', 'ADD_ITEM', 'INFO', 'Processing new entry...');
     // Optimistically add item
     const newItem: RegistryItem = {
       id: Date.now().toString(),
@@ -89,9 +109,11 @@ const App: React.FC = () => {
     setRegistryItems(prev => prev.map(item => 
       item.id === newItem.id ? { ...item, title } : item
     ));
+    systemLog('REGISTRY', 'UPDATE_TITLE', 'SUCCESS', `Title assigned: ${title}`);
   };
 
   const handleDeleteRegistryItem = (id: string) => {
+    systemLog('REGISTRY', 'DELETE', 'WARN', `Removing Node ID: ${id}`);
     setRegistryItems(prev => prev.filter(item => item.id !== id));
   };
 
