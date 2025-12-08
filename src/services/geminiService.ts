@@ -269,7 +269,7 @@ export const sendMessageStream = async (
     });
 
     const result = await chat.sendMessageStream({ 
-        parts: parts 
+        message: parts
     });
     
     systemLog('CHAT_ENGINE', 'STREAM_START', 'INFO');
