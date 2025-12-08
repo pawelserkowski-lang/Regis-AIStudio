@@ -11,6 +11,10 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<string>('Guest');
 
+  // Placeholder for the uploaded Necromancer background
+  // In a real file system, this would be a local path. 
+  const BG_IMAGE_URL = "https://i.imgur.com/2Xy1y3x.png"; // Fallback/Placeholder if user doesn't replace
+
   // --- Initial State Hydration ---
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
@@ -99,18 +103,23 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-black text-slate-100 overflow-hidden relative">
+      {/* Necromancer Background */}
       <div 
         className="absolute inset-0 z-0 opacity-40 pointer-events-none"
         style={{
-          background: `
-            radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.15) 0%, transparent 60%),
-            radial-gradient(circle at 100% 0%, rgba(5, 150, 105, 0.2) 0%, transparent 50%),
-            linear-gradient(to bottom right, #000000 0%, #0f172a 100%)
-          `,
-          backgroundSize: '200% 200%',
+          // User should replace this URL with the local file path or hosted URL of the 'Necromancer' image provided
+          backgroundImage: `url('https://i.ibb.co/6y408X2/necro-bg.png')`, // Placeholder mapping to user's Necro image style
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          filter: 'sepia(50%) hue-rotate(100deg) contrast(1.2)' // Green shift to match theme
         }}
       />
-      <div className="absolute inset-0 z-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"></div>
+      
+      {/* Tech Overlay Pattern */}
+      <div className="absolute inset-0 z-0 bg-[linear-gradient(rgba(16,185,129,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"></div>
+
+      {/* Vignette */}
+      <div className="absolute inset-0 z-0 bg-radial-gradient(circle, transparent 40%, #000 100%) pointer-events-none"></div>
 
       <div className="relative z-10 flex h-full w-full">
         <Sidebar currentView={currentView} onViewChange={setCurrentView} />

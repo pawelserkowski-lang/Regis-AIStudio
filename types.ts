@@ -1,3 +1,4 @@
+
 export enum Sender {
   USER = 'user',
   BOT = 'bot'
@@ -10,6 +11,12 @@ export interface Attachment {
   data?: string; // base64
 }
 
+export interface DetectionBox {
+  label: string;
+  confidence?: number;
+  box_2d: [number, number, number, number]; // [ymin, xmin, ymax, xmax] (0-1000)
+}
+
 export interface Message {
   id: string;
   text: string;
@@ -18,6 +25,7 @@ export interface Message {
   isStreaming?: boolean;
   attachments?: Attachment[];
   groundingMetadata?: any;
+  visualAnalysis?: DetectionBox[]; // New field for GUI Analysis
 }
 
 export interface RegistryItem {

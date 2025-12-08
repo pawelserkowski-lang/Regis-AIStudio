@@ -28,17 +28,38 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) => {
                 REGIS_KERNEL_V1
             </div>
 
-            {/* Desktop View: Styled Vector Logo */}
-            <div className="hidden md:flex items-center gap-3 w-full group cursor-default">
-                <div className="relative">
-                     <div className="absolute inset-0 bg-emerald-500 blur-lg rounded-full opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
-                     <div className="w-10 h-10 bg-gradient-to-tr from-emerald-600 to-black rounded-lg border border-emerald-500/50 flex items-center justify-center relative z-10 shadow-lg">
-                        <Cpu size={20} className="text-emerald-400" />
+            {/* Desktop View: Provided EPS Logo Graphic */}
+            <div className="hidden md:flex flex-col items-center w-full group cursor-default">
+                <div className="relative w-full h-auto mb-4 p-2 border border-emerald-500/20 rounded-xl bg-black/40 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                     {/* Placeholder for the EPS AI Logo Image provided by user */}
+                     {/* I am constructing the CSS logo to match the neon graphic provided if image fails to load */}
+                     <div className="relative flex flex-col items-center justify-center py-4">
+                        {/* Circuit Background Effect */}
+                        <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(16,185,129,0.2)_0%,transparent_70%)] opacity-50"></div>
+                        
+                        {/* Main AI Text */}
+                        <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.8)] font-mono tracking-tighter" style={{ fontFamily: 'JetBrains Mono' }}>
+                            AI
+                        </h1>
+                        
+                        {/* Circuit Lines (CSS Simulation of the graphic) */}
+                        <div className="absolute w-full h-full opacity-30 pointer-events-none">
+                            <div className="absolute top-1/2 left-0 w-1/3 h-px bg-emerald-500 shadow-[0_0_5px_#10b981]"></div>
+                            <div className="absolute top-1/2 right-0 w-1/3 h-px bg-emerald-500 shadow-[0_0_5px_#10b981]"></div>
+                            <div className="absolute top-1/4 left-1/4 w-px h-1/2 bg-emerald-500"></div>
+                            <div className="absolute top-1/4 right-1/4 w-px h-1/2 bg-emerald-500"></div>
+                        </div>
+
+                        {/* Subtext EPS AI SOLUTIONS */}
+                        <div className="mt-2 text-center">
+                            <p className="text-[10px] text-emerald-400 font-bold tracking-[0.3em] border-x border-emerald-500/50 px-2 uppercase shadow-[0_0_10px_rgba(16,185,129,0.5)]">
+                                [EPS AI
+                            </p>
+                            <p className="text-[10px] text-emerald-400 font-bold tracking-[0.3em] uppercase mt-0.5 shadow-[0_0_10px_rgba(16,185,129,0.5)]">
+                                SOLUTIONS]
+                            </p>
+                        </div>
                      </div>
-                </div>
-                <div>
-                    <h1 className="text-xl font-bold text-white tracking-widest leading-none font-mono">EPS<span className="text-emerald-500">_AI</span></h1>
-                    <p className="text-[10px] text-emerald-500/60 font-mono tracking-[0.2em] mt-1">SOLUTIONS</p>
                 </div>
             </div>
         </div>

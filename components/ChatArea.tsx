@@ -1,7 +1,9 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { Bot, User, BookmarkPlus, Loader2, Paperclip, Image as ImageIcon, Video, Mic, Sparkles, X, MapPin, Globe, Volume2, StopCircle, CornerDownLeft, Radio, Search } from 'lucide-react';
-import { Message, Sender, Attachment } from '../types';
-import { sendMessageStream, generateImage, generateVideo, generateSpeech, connectLiveSession, transcribeAudio, AudioStreamPlayer } from '../services/geminiService';
+import { Bot, User, BookmarkPlus, Loader2, Paperclip, Image as ImageIcon, Video, Mic, Sparkles, X, MapPin, Globe, Volume2, StopCircle, CornerDownLeft, Radio, Search, ScanEye } from 'lucide-react';
+import { Message, Sender, Attachment, DetectionBox } from '../types';
+import { sendMessageStream, generateImage, generateVideo, generateSpeech, connectLiveSession, transcribeAudio, AudioStreamPlayer, detectUIElements } from '../services/geminiService';
+import FileListView from './FileListView';
+import VisualAnalyzer from './VisualAnalyzer';
 
 interface ChatAreaProps {
   messages: Message[];
@@ -75,6 +77,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
       };
       reader.readAsDataURL(file);
       e.target.value = ''; // Reset input
+  };
+
+  const removeAttachment = (index: number) => {
+      setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSend = async () => {
@@ -152,6 +158,61 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
       setIsLoading(false);
       setMessages(prev => prev.map(msg => msg.id === botMessageId ? { ...msg, isStreaming: false } : msg));
     }
+  };
+
+  // Special Handler for Visual Analysis
+  const handleScanGUI = async () => {
+      if (attachments.length === 0 || attachments[0].type !== 'image') {
+          alert("Please attach an image to scan.");
+          return;
+      }
+      
+      setIsLoading(true);
+      setShowTools(false);
+      
+      const imageAtt = attachments[0];
+      setAttachments([]); // Clear attachment from input
+
+      // Create a bot placeholder
+      const botMessageId = Date.now().toString();
+      const userMessage: Message = {
+          id: (Date.now() - 1).toString(),
+          text: "Analyze this interface structure.",
+          sender: Sender.USER,
+          timestamp: Date.now(),
+          attachments: [imageAtt]
+      };
+      
+      const botMessage: Message = {
+          id: botMessageId,
+          text: "Scanning image for UI elements...",
+          sender: Sender.BOT,
+          timestamp: Date.now(),
+          isStreaming: true
+      };
+      
+      setMessages(prev => [...prev, userMessage, botMessage]);
+
+      try {
+          const detections = await detectUIElements(imageAtt.data!);
+          
+          setMessages(prev => prev.map(msg => 
+              msg.id === botMessageId
+              ? {
+                  ...msg,
+                  text: `Analysis Complete. ${detections.length} elements detected.`,
+                  visualAnalysis: detections,
+                  isStreaming: false,
+                  // Re-attach the image to the bot message so the overlay can use it
+                  attachments: [imageAtt] 
+              }
+              : msg
+          ));
+      } catch (error) {
+          setMessages(prev => prev.map(msg => msg.id === botMessageId ? { ...msg, text: "Analysis Failed.", isStreaming: false } : msg));
+      } finally {
+          setIsLoading(false);
+      }
   };
 
   const handleGenerateMedia = async (type: 'image' | 'video') => {
@@ -339,7 +400,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
                 {msg.sender === Sender.USER ? <User size={18} /> : <Bot size={18} />}
               </div>
               
-              <div className="flex flex-col gap-1 min-w-0">
+              <div className="flex flex-col gap-1 min-w-0 w-full">
                   <span className={`text-[10px] font-medium uppercase tracking-wider ${msg.sender === Sender.USER ? 'text-right text-slate-500' : 'text-left text-emerald-500/50'}`}>
                       {msg.sender === Sender.USER ? 'YOU' : 'REGIS'} • {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                   </span>
@@ -349,13 +410,22 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
                       ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-tr-sm' 
                       : 'bg-black/40 text-slate-200 border border-white/10 rounded-tl-sm'
                   }`}>
-                    {msg.attachments?.map((att, idx) => (
-                        <div key={idx} className="mb-4 rounded-xl overflow-hidden border border-white/20 bg-black/40">
-                            {att.type === 'image' && <img src={att.url} alt="Generated" className="max-w-full h-auto" />}
-                            {att.type === 'video' && <video src={att.url} controls className="max-w-full h-auto" />}
-                            {att.type === 'audio' && <audio src={att.url} controls className="w-full" />}
+                    {/* Render Visual Analysis Result (if detected) */}
+                    {msg.visualAnalysis && msg.attachments && msg.attachments[0] && (
+                        <div className="mb-4">
+                            <VisualAnalyzer 
+                                imageUrl={msg.attachments[0].url} 
+                                detections={msg.visualAnalysis} 
+                            />
                         </div>
-                    ))}
+                    )}
+
+                    {/* Render Standard Attachments (only if not used in Visual Analysis) */}
+                    {!msg.visualAnalysis && msg.attachments && msg.attachments.length > 0 && (
+                        <div className="mb-4">
+                            <FileListView items={msg.attachments} readOnly={true} />
+                        </div>
+                    )}
 
                     <div className="whitespace-pre-wrap leading-relaxed text-[15px]">{msg.text}</div>
                     
@@ -413,16 +483,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
       {/* Input Area */}
       <div className="p-4 md:p-6 bg-gradient-to-t from-black via-black/90 to-transparent sticky bottom-0 z-20">
         <div className="max-w-4xl mx-auto relative">
-            {/* Attachment Preview */}
+            {/* Attachment Preview (New FileListView) */}
             {attachments.length > 0 && (
-                <div className="absolute bottom-full left-0 mb-4 flex gap-3 p-2 bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-lg">
-                    {attachments.map((att, i) => (
-                        <div key={i} className="h-16 w-16 rounded-lg bg-white/5 overflow-hidden relative border border-white/10 group">
-                            {att.type === 'image' ? <img src={att.url} className="h-full w-full object-cover"/> : <div className="h-full w-full flex items-center justify-center text-slate-400"><Paperclip size={20}/></div>}
-                            <button onClick={() => setAttachments([])} className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white"><X size={16}/></button>
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-xs text-white rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Remove</div>
-                        </div>
-                    ))}
+                <div className="absolute bottom-full left-0 mb-4 flex gap-3 p-2 bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-lg animate-in slide-in-from-bottom-2 fade-in">
+                    <FileListView items={attachments} onRemove={removeAttachment} />
                 </div>
             )}
             
@@ -440,6 +504,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
                     
                     {showTools && (
                         <div className="absolute bottom-full left-0 mb-4 w-52 bg-black/90 backdrop-blur-xl rounded-xl border border-white/10 p-2 flex flex-col gap-1 z-30 animate-in fade-in slide-in-from-bottom-2">
+                            {/* Visual Analysis Button */}
+                             <button onClick={handleScanGUI} disabled={attachments.length === 0 || attachments[0].type !== 'image'} className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/10 rounded-lg text-sm text-slate-300 hover:text-emerald-400 relative group disabled:opacity-50 disabled:cursor-not-allowed">
+                                <ScanEye size={18} /> Scan UI Elements
+                            </button>
+                            <div className="w-full h-px bg-white/10 my-1"></div>
                             <button onClick={() => handleGenerateMedia('image')} className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/10 rounded-lg text-sm text-slate-300 hover:text-emerald-400 relative group">
                                 <ImageIcon size={18} /> Generate Image
                             </button>

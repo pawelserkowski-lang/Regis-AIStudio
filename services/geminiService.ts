@@ -1,4 +1,5 @@
-import { GoogleGenAI, Chat, GenerateContentResponse, Modality, LiveServerMessage, Part } from "@google/genai";
+import { GoogleGenAI, Chat, GenerateContentResponse, Modality, LiveServerMessage, Part, Type } from "@google/genai";
+import { DetectionBox } from "../types";
 
 // --- System Logger ---
 const SYSTEM_START = Date.now();
@@ -23,6 +24,50 @@ export const systemLog = (module: string, action: string, status: 'INFO' | 'WARN
 systemLog('CORE', 'API_CLIENT', 'INFO', 'Initializing GoogleGenAI Client...');
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 systemLog('CORE', 'API_CLIENT', 'SUCCESS', 'Client Ready');
+
+// --- Visual Analysis (GUI Detection) ---
+
+export const detectUIElements = async (imageBase64: string): Promise<DetectionBox[]> => {
+  systemLog('VISION_CORE', 'DETECT_UI', 'INFO', 'Starting Visual GUI Analysis...');
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview', // Strongest model for reasoning/vision
+      contents: {
+        parts: [
+          { inlineData: { data: imageBase64, mimeType: 'image/png' } },
+          { text: "Analyze this GUI/Image. Detect all significant UI elements, buttons, inputs, icons, or text blocks. Return their bounding boxes in 0-1000 scale." }
+        ]
+      },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              label: { type: Type.STRING, description: "Name of the UI element" },
+              box_2d: { 
+                type: Type.ARRAY, 
+                items: { type: Type.INTEGER },
+                description: "ymin, xmin, ymax, xmax coordinates (0-1000)"
+              }
+            },
+            required: ["label", "box_2d"]
+          }
+        }
+      }
+    });
+
+    const rawJSON = response.text || "[]";
+    const detections: DetectionBox[] = JSON.parse(rawJSON);
+    
+    systemLog('VISION_CORE', 'DETECT_UI', 'SUCCESS', { count: detections.length });
+    return detections;
+  } catch (error) {
+    systemLog('VISION_CORE', 'DETECT_ERROR', 'ERROR', error);
+    return [];
+  }
+};
 
 // --- Audio Utilities ---
 
