@@ -20,18 +20,75 @@ export const systemLog = (module: string, action: string, status: 'INFO' | 'WARN
   );
 };
 
-// Initialize Gemini AI
-systemLog('CORE', 'API_CLIENT', 'INFO', 'Initializing GoogleGenAI Client...');
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-systemLog('CORE', 'API_CLIENT', 'SUCCESS', 'Client Ready');
+// --- Singleton Client Management ---
+
+let aiClientInstance: GoogleGenAI | null = null;
+let chatSession: Chat | null = null;
+
+const getApiKey = () => {
+  // Check Environment (Vite injection)
+  if (process.env.API_KEY && process.env.API_KEY.length > 0) {
+    return process.env.API_KEY;
+  }
+  // Check LocalStorage (UI injection)
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('GEMINI_API_KEY') || '';
+  }
+  return '';
+};
+
+// Lazy initialization ensures we don't crash on load if key is missing,
+// and we pick up the key immediately after the user saves it in Launcher.
+const getAIClient = (): GoogleGenAI => {
+    if (!aiClientInstance) {
+        const key = getApiKey();
+        if (!key) {
+            systemLog('CORE', 'AUTH', 'WARN', 'API Key missing during client initialization attempt.');
+            throw new Error("API Key not found. Please restart session.");
+        }
+        systemLog('CORE', 'INIT', 'INFO', 'Initializing Gemini Client...');
+        aiClientInstance = new GoogleGenAI({ apiKey: key });
+    }
+    return aiClientInstance;
+};
+
+// --- Utilities ---
+
+const cleanJSON = (text: string): string => {
+    // Attempt 1: Regex extraction of code blocks
+    const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (match && match[1]) {
+        return match[1].trim();
+    }
+
+    // Attempt 2: Brute-force find { [ and ] }
+    const firstOpen = text.indexOf('{');
+    const firstArray = text.indexOf('[');
+    let start = -1;
+    
+    if (firstOpen !== -1 && firstArray !== -1) start = Math.min(firstOpen, firstArray);
+    else if (firstOpen !== -1) start = firstOpen;
+    else if (firstArray !== -1) start = firstArray;
+
+    if (start !== -1) {
+        const lastClose = Math.max(text.lastIndexOf('}'), text.lastIndexOf(']'));
+        if (lastClose !== -1 && lastClose > start) {
+            return text.substring(start, lastClose + 1);
+        }
+    }
+
+    // Fallback: return trimmed text (might fail parse, but we tried)
+    return text.trim();
+};
 
 // --- Visual Analysis (GUI Detection) ---
 
 export const detectUIElements = async (imageBase64: string): Promise<DetectionBox[]> => {
   systemLog('VISION_CORE', 'DETECT_UI', 'INFO', 'Starting Visual GUI Analysis...');
   try {
+    const ai = getAIClient();
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', // Strongest model for reasoning/vision
+      model: 'gemini-3-pro-preview', 
       contents: {
         parts: [
           { inlineData: { data: imageBase64, mimeType: 'image/png' } },
@@ -58,11 +115,17 @@ export const detectUIElements = async (imageBase64: string): Promise<DetectionBo
       }
     });
 
-    const rawJSON = response.text || "[]";
-    const detections: DetectionBox[] = JSON.parse(rawJSON);
+    const rawText = response.text || "[]";
+    const cleaned = cleanJSON(rawText);
     
-    systemLog('VISION_CORE', 'DETECT_UI', 'SUCCESS', { count: detections.length });
-    return detections;
+    try {
+        const detections: DetectionBox[] = JSON.parse(cleaned);
+        systemLog('VISION_CORE', 'DETECT_UI', 'SUCCESS', { count: detections.length });
+        return detections;
+    } catch (parseError) {
+        systemLog('VISION_CORE', 'PARSE_ERROR', 'ERROR', { raw: rawText, cleaned });
+        return [];
+    }
   } catch (error) {
     systemLog('VISION_CORE', 'DETECT_ERROR', 'ERROR', error);
     return [];
@@ -82,7 +145,9 @@ export class AudioStreamPlayer {
 
   public async initialize() {
     if (!this.audioContext) {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: this.sampleRate });
+      // Cross-browser support
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      this.audioContext = new AudioContextClass({ sampleRate: this.sampleRate });
     }
     if (this.audioContext.state === 'suspended') {
       await this.audioContext.resume();
@@ -99,7 +164,6 @@ export class AudioStreamPlayer {
     source.connect(ctx.destination);
 
     const currentTime = ctx.currentTime;
-    // Ensure we don't schedule in the past
     if (this.nextStartTime < currentTime) {
       this.nextStartTime = currentTime;
     }
@@ -132,8 +196,6 @@ export class AudioStreamPlayer {
 
 // --- Chat Session Management ---
 
-let chatSession: Chat | null = null;
-
 const FILE_SYSTEM_CONTEXT = `
 [SYSTEM STATUS: ONLINE]
 [FILE SYSTEM: MOUNTED (READ/WRITE)]
@@ -154,6 +216,7 @@ DO NOT ASK THE USER TO PASTE CODE.
 
 const getChatSession = (): Chat => {
   if (!chatSession) {
+    const ai = getAIClient();
     systemLog('CHAT_ENGINE', 'SESSION_INIT', 'INFO', 'Creating new Gemini 3 Pro session...');
     chatSession = ai.chats.create({
       model: 'gemini-3-pro-preview',
@@ -196,7 +259,6 @@ export const sendMessageStream = async (
   try {
     const parts: Part[] = [{ text: message }];
     
-    // Add attachments
     attachments.forEach(att => {
         parts.push({
             inlineData: {
@@ -236,6 +298,7 @@ export const sendMessageStream = async (
 export const generateTitleForRegistry = async (content: string): Promise<string> => {
   systemLog('AUTO_TAGGER', 'GEN_TITLE', 'INFO', 'Analyzing content signature...');
   try {
+    const ai = getAIClient();
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `Generate a short, concise title (max 5 words) for the following content, do not add quotes: ${content.substring(0, 500)}...`,
@@ -257,6 +320,7 @@ export const generateImage = async (
 ): Promise<string> => {
   systemLog('IMG_GEN', 'START', 'INFO', { prompt, settings });
   try {
+    const ai = getAIClient();
     if (settings.isEditing && settings.imageBase64) {
         systemLog('IMG_GEN', 'MODE_SWITCH', 'INFO', 'Editing Mode (Gemini Flash Image)');
         const response = await ai.models.generateContent({
@@ -274,7 +338,10 @@ export const generateImage = async (
                 return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
             }
         }
-        throw new Error("No image generated in edit mode");
+        // Fallback: Check if the model refused or returned just text
+        const textResponse = response.text || "No reason provided";
+        throw new Error(`Model Refusal / Text Only: ${textResponse}`);
+
     } else {
         systemLog('IMG_GEN', 'MODE_SWITCH', 'INFO', 'Creation Mode (Gemini 3 Pro)');
         const response = await ai.models.generateContent({
@@ -293,7 +360,8 @@ export const generateImage = async (
                 return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
             }
         }
-         throw new Error("No image generated");
+         const textResponse = response.text || "No reason provided";
+         throw new Error(`Model Refusal / Text Only: ${textResponse}`);
     }
   } catch (error) {
     systemLog('IMG_GEN', 'ERROR', 'ERROR', error);
@@ -307,6 +375,7 @@ export const generateVideo = async (
 ): Promise<string> => {
     systemLog('VIDEO_GEN', 'START', 'INFO', { prompt, aspectRatio });
     try {
+        const ai = getAIClient();
         let operation = await ai.models.generateVideos({
             model: 'veo-3.1-fast-generate-preview',
             prompt: prompt,
@@ -326,7 +395,8 @@ export const generateVideo = async (
         const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
         if (!videoUri) throw new Error("No video URI returned");
         
-        const response = await fetch(`${videoUri}&key=${process.env.API_KEY}`);
+        const key = getApiKey();
+        const response = await fetch(`${videoUri}&key=${key}`);
         const blob = await response.blob();
         return URL.createObjectURL(blob);
     } catch (error) {
@@ -338,6 +408,7 @@ export const generateVideo = async (
 export const generateSpeech = async (text: string): Promise<string> => {
     systemLog('TTS_ENGINE', 'SYNTHESIS', 'INFO', { textLength: text.length });
     try {
+        const ai = getAIClient();
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash-preview-tts",
             contents: [{ parts: [{ text }] }],
@@ -363,6 +434,7 @@ export const generateSpeech = async (text: string): Promise<string> => {
 export const transcribeAudio = async (audioBase64: string): Promise<string> => {
     systemLog('AUDIO_PROC', 'TRANSCRIPT', 'INFO', 'Processing Audio Packet...');
     try {
+        const ai = getAIClient();
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: {
@@ -387,8 +459,19 @@ export const connectLiveSession = async (
     onClose: () => void
 ) => {
     systemLog('LIVE_LINK', 'CONNECT', 'INFO', 'Establishing WebSocket Handshake...');
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const ai = getAIClient();
+    
+    // Cross-browser support
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const audioContext = new AudioContextClass({ sampleRate: 16000 });
+    
+    let stream: MediaStream;
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+        systemLog('LIVE_LINK', 'PERM_DENIED', 'ERROR', 'Microphone access refused.');
+        throw new Error("Microphone access is required for Live Mode.");
+    }
     
     // Setup Input
     const source = audioContext.createMediaStreamSource(stream);
@@ -441,9 +524,11 @@ export const connectLiveSession = async (
             },
             onclose: () => {
                 systemLog('LIVE_LINK', 'STATUS', 'WARN', 'Session Disconnected by Server');
-                stream.getTracks().forEach(t => t.stop());
-                source.disconnect();
-                processor.disconnect();
+                try {
+                    stream.getTracks().forEach(t => t.stop());
+                    source.disconnect();
+                    processor.disconnect();
+                } catch(e) {}
                 onClose();
             },
             onerror: (err) => {
@@ -458,8 +543,10 @@ export const connectLiveSession = async (
             systemLog('LIVE_LINK', 'CLOSE', 'INFO', 'User Terminated Connection');
             const session = await sessionPromise;
             session.close();
-            stream.getTracks().forEach(t => t.stop());
-            audioContext.close();
+            try {
+                stream.getTracks().forEach(t => t.stop());
+                audioContext.close();
+            } catch(e) {}
         }
     };
 };

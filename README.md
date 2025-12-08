@@ -59,17 +59,19 @@ Regis utilizes a specific orchestration of Gemini models optimized for distinct 
 ## 5. Setup & Configuration
 
 ### Prerequisites
-*   A valid **Google Gemini API Key** with access to paid services (required for Veo and Gemini 3 Pro).
+1.  **Node.js**: You must have Node.js installed on your computer. [Download Here](https://nodejs.org/).
+2.  **API Key**: You will need a Google Gemini API Key. You can enter this directly in the App Launcher UI.
 
-### Environment Variables
-The application expects the API key to be injected via the environment:
-*   `process.env.API_KEY`
+### 🚀 Quick Start (Windows)
+1.  Double-click the file **`start_regis.bat`**.
+2.  The system will automatically install dependencies (first run only) and launch the application in your browser.
 
-### Running the System
-Since this project uses ES Modules via CDN:
-1.  Ensure `metadata.json` requests microphone permissions.
-2.  Serve the root directory using a static server (or the provided AI Studio environment).
-3.  The `index.html` will bootstrap React and load `index.tsx`.
+### Manual Start (Mac/Linux)
+Open a terminal in the project folder and run:
+```bash
+npm install
+npm run dev
+```
 
 ---
 *EPS AI SOLUTIONS // SYSTEM END OF FILE*

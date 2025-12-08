@@ -1,10 +1,11 @@
 {
   "name": "regis-ai-studio",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host --clearScreen false",
+    "launcher": "vite --host --open --clearScreen false",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },

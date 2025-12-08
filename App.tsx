@@ -11,10 +11,6 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<string>('Guest');
 
-  // Placeholder for the uploaded Necromancer background
-  // In a real file system, this would be a local path. 
-  const BG_IMAGE_URL = "https://i.imgur.com/2Xy1y3x.png"; // Fallback/Placeholder if user doesn't replace
-
   // --- Initial State Hydration ---
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
@@ -103,17 +99,22 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-black text-slate-100 overflow-hidden relative">
-      {/* Necromancer Background */}
+      {/* Necro-Cyber Generative Background (Pure CSS) */}
+      {/* Layer 1: Base Dark Green Pulse */}
       <div 
         className="absolute inset-0 z-0 opacity-40 pointer-events-none"
         style={{
-          // User should replace this URL with the local file path or hosted URL of the 'Necromancer' image provided
-          backgroundImage: `url('https://i.ibb.co/6y408X2/necro-bg.png')`, // Placeholder mapping to user's Necro image style
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          filter: 'sepia(50%) hue-rotate(100deg) contrast(1.2)' // Green shift to match theme
+          background: 'radial-gradient(circle at 50% 50%, #064e3b 0%, #020617 80%)',
         }}
       />
+      
+      {/* Layer 2: Smoke/Fog Simulation */}
+      <div className="absolute inset-0 z-0 opacity-30 pointer-events-none mix-blend-screen"
+         style={{
+           backgroundImage: 'radial-gradient(at 80% 0%, hsla(148,60%,20%,1) 0px, transparent 50%), radial-gradient(at 0% 50%, hsla(158,60%,15%,1) 0px, transparent 50%), radial-gradient(at 80% 100%, hsla(148,60%,20%,1) 0px, transparent 50%)',
+           filter: 'blur(40px)'
+         }}
+      ></div>
       
       {/* Tech Overlay Pattern */}
       <div className="absolute inset-0 z-0 bg-[linear-gradient(rgba(16,185,129,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"></div>
