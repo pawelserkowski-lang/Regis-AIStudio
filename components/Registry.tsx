@@ -1,5 +1,5 @@
-import React from 'react';
-import { Search, Trash2, Calendar, Tag, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Trash2, Calendar, Tag, ArrowRight, Loader2, Database, Filter } from 'lucide-react';
 import { RegistryItem } from '../types';
 
 interface RegistryProps {
@@ -8,13 +8,27 @@ interface RegistryProps {
 }
 
 const Registry: React.FC<RegistryProps> = ({ items, onDeleteItem }) => {
-  const [searchTerm, setSearchTerm] = React.useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All Categories');
+  const [displayedItems, setDisplayedItems] = useState<RegistryItem[]>(items);
 
-  const filteredItems = items.filter(item => 
-    item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    item.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Handle Filtering & Searching
+  useEffect(() => {
+    const filtered = items.filter(item => {
+      const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            item.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            item.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      const matchesCategory = categoryFilter === 'All Categories' || item.category === categoryFilter;
+      
+      return matchesSearch && matchesCategory;
+    });
+    
+    setDisplayedItems(filtered);
+  }, [searchTerm, categoryFilter, items]);
+
+  // Unique Categories for Dropdown
+  const categories = ['All Categories', ...Array.from(new Set(items.map(i => i.category)))];
 
   return (
     <div className="h-full overflow-y-auto p-6 md:p-12 scrollbar-thin scrollbar-thumb-emerald-900 scrollbar-track-transparent">
@@ -31,7 +45,7 @@ const Registry: React.FC<RegistryProps> = ({ items, onDeleteItem }) => {
         </header>
 
         {/* Search and Filter Bar */}
-        <div className="bg-black/40 backdrop-blur-md p-2 rounded-2xl shadow-lg border border-white/10 mb-10 flex flex-col md:flex-row gap-2 items-center max-w-3xl">
+        <div className="bg-black/40 backdrop-blur-md p-2 rounded-2xl shadow-lg border border-white/10 mb-10 flex flex-col md:flex-row gap-2 items-center max-w-3xl relative z-20">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500" size={20} />
             <input 
@@ -39,24 +53,28 @@ const Registry: React.FC<RegistryProps> = ({ items, onDeleteItem }) => {
               placeholder="Search registry..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-transparent border-none rounded-xl focus:ring-0 text-slate-200 placeholder:text-slate-600"
+              className="w-full pl-12 pr-4 py-3 bg-transparent border-none rounded-xl focus:ring-0 text-slate-200 placeholder:text-slate-600 focus:outline-none"
             />
           </div>
-          <div className="w-full md:w-auto border-t md:border-t-0 md:border-l border-white/10 pt-2 md:pt-0 pl-0 md:pl-2">
-            <select className="w-full md:w-auto px-4 py-3 bg-transparent border-none rounded-xl text-slate-400 font-medium focus:ring-2 focus:ring-emerald-500/20 cursor-pointer hover:text-emerald-400 transition-colors [&>option]:bg-slate-900">
-              <option>All Categories</option>
-              <option>General</option>
-              <option>Code</option>
-              <option>Ideas</option>
+          <div className="w-full md:w-auto border-t md:border-t-0 md:border-l border-white/10 pt-2 md:pt-0 pl-0 md:pl-2 relative">
+             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 md:hidden" size={16} />
+            <select 
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="w-full md:w-auto pl-10 md:pl-4 pr-8 py-3 bg-transparent border-none rounded-xl text-slate-400 font-medium focus:ring-2 focus:ring-emerald-500/20 cursor-pointer hover:text-emerald-400 transition-colors [&>option]:bg-slate-900 focus:outline-none appearance-none"
+            >
+              {categories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+              ))}
             </select>
           </div>
         </div>
 
         {/* Grid of Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredItems.map(item => (
+        {displayedItems.map(item => (
             <div key={item.id} className="group bg-black/40 backdrop-blur-sm rounded-2xl p-1 border border-white/5 hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] transition-all duration-300 hover:-translate-y-1 flex flex-col h-80">
-              <div className="h-full p-5 flex flex-col">
+            <div className="h-full p-5 flex flex-col">
                 <div className="flex justify-between items-start mb-4">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
                     {item.category}
@@ -96,19 +114,19 @@ const Registry: React.FC<RegistryProps> = ({ items, onDeleteItem }) => {
                         </span>
                     </div>
                 </div>
-              </div>
             </div>
-          ))}
+            </div>
+        ))}
 
-          {filteredItems.length === 0 && (
-             <div className="col-span-full flex flex-col items-center justify-center py-24 text-slate-500 border-2 border-dashed border-white/10 rounded-3xl bg-black/20">
+        {displayedItems.length === 0 && (
+            <div className="col-span-full flex flex-col items-center justify-center py-24 text-slate-500 border-2 border-dashed border-white/10 rounded-3xl bg-black/20">
                 <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center shadow-sm mb-4">
-                    <Search size={32} className="text-slate-600" />
+                    <Database size={32} className="text-slate-600" />
                 </div>
                 <p className="text-lg font-medium text-slate-400">No data segments found.</p>
                 <p className="text-sm mt-1 text-slate-600">Adjust query parameters or ingest new data.</p>
-             </div>
-          )}
+            </div>
+        )}
         </div>
       </div>
     </div>

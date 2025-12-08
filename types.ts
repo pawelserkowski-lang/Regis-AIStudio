@@ -31,11 +31,5 @@ export interface RegistryItem {
 
 export enum View {
   CHAT = 'chat',
-  REGISTRY = 'registry',
-  STATS = 'stats'
-}
-
-export interface ChartData {
-  name: string;
-  value: number;
+  REGISTRY = 'registry'
 }

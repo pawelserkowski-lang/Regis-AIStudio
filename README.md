@@ -1,6 +1,6 @@
 # EPS AI SOLUTIONS - REGIS SYSTEM
 
-**Version:** 1.0.0  
+**Version:** 1.0.1
 **Status:** [ONLINE]  
 **Codename:** Project Phoenix
 
@@ -10,13 +10,14 @@
 
 The application is built as a client-side React application using ES Modules, requiring no build step in its current environment, and persists data via the browser's LocalStorage.
 
+For a deep dive into the technical design, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 ## 2. Technical Stack
 
 *   **Core Framework:** React 19 (via ESM imports)
 *   **Language:** TypeScript
 *   **Styling:** Tailwind CSS (CDN)
 *   **AI SDK:** `@google/genai` (v1.31.0)
-*   **Visualization:** Recharts
 *   **Icons:** Lucide React
 *   **Fonts:** Inter (UI), JetBrains Mono (Code/Headers)
 
@@ -53,32 +54,9 @@ Regis utilizes a specific orchestration of Gemini models optimized for distinct 
 *   **Search & Filter:** Real-time filtering by text, category, or tags.
 
 ### 4.4. System Analytics
-*   **Data Visualization:** Uses Recharts to display:
-    *   **Distribution Protocol:** Pie chart of knowledge categories.
-    *   **Activity Log:** Bar chart of entry creation over time.
+*   **Data Visualization:** Uses Recharts to display knowledge distribution and activity logs (Note: This feature is currently in maintenance mode in the Lite version).
 
-## 5. Project Structure
-
-```
-/
-├── index.html              # Entry point, importmaps, global styles
-├── index.tsx               # React root mounting
-├── App.tsx                 # Main layout, State Management, Persistence Logic
-├── types.ts                # TypeScript Interfaces (Message, RegistryItem, View)
-├── metadata.json           # Application metadata and permissions
-├── README.md               # System Documentation
-│
-├── components/
-│   ├── Sidebar.tsx         # Navigation and Branding
-│   ├── ChatArea.tsx        # Main interaction layer, Tool handling, Live Mode UI
-│   ├── Registry.tsx        # Grid view of saved knowledge
-│   └── Stats.tsx           # Analytics dashboard
-│
-└── services/
-    └── geminiService.ts    # SINGLETON. Handles all API calls, Audio encoding/decoding, and Live API connection.
-```
-
-## 6. Setup & Configuration
+## 5. Setup & Configuration
 
 ### Prerequisites
 *   A valid **Google Gemini API Key** with access to paid services (required for Veo and Gemini 3 Pro).
@@ -92,12 +70,6 @@ Since this project uses ES Modules via CDN:
 1.  Ensure `metadata.json` requests microphone permissions.
 2.  Serve the root directory using a static server (or the provided AI Studio environment).
 3.  The `index.html` will bootstrap React and load `index.tsx`.
-
-## 7. Troubleshooting
-
-*   **Live Mode Silence:** Ensure your browser has granted Microphone permissions. The Live API uses raw PCM data; if the network is slow, audio buffering might occur.
-*   **Video Generation Delay:** Veo model generation is asynchronous and can take 10-60 seconds. The UI handles polling, but do not close the tab during generation.
-*   **Persistence:** If data is not saving, check if your browser blocks `localStorage` or if you are in Incognito/Private mode.
 
 ---
 *EPS AI SOLUTIONS // SYSTEM END OF FILE*

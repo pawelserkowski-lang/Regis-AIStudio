@@ -1,5 +1,5 @@
 {
-  "name": "Regis",
+  "name": "Regis - AI Agent",
   "description": "An intelligent knowledge registry and assistant powered by Gemini. Chat, organize, and visualize your ideas.",
   "requestFramePermissions": [
     "microphone"

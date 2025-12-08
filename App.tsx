@@ -2,163 +2,116 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import Registry from './components/Registry';
-import Stats from './components/Stats';
+import Launcher from './components/Launcher';
 import { View, Message, RegistryItem, Sender } from './types';
 import { generateTitleForRegistry, systemLog } from './services/geminiService';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.CHAT);
-  
-  // Boot Sequence Logging
-  useEffect(() => {
-    systemLog('SYSTEM_BOOT', 'INIT', 'INFO', 'Starting Regis Kernel v1.0.0...');
-    setTimeout(() => systemLog('SYSTEM_BOOT', 'ENV_CHECK', 'SUCCESS', 'Environment Variables Loaded'), 200);
-    setTimeout(() => systemLog('SYSTEM_BOOT', 'MOUNT', 'SUCCESS', 'Virtual DOM Mounted'), 400);
-    setTimeout(() => systemLog('SYSTEM_BOOT', 'READY', 'SUCCESS', 'System Online. Waiting for Input.'), 600);
-  }, []);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<string>('Guest');
 
-  // View Change Logging
-  useEffect(() => {
-    systemLog('UI_LAYER', 'VIEW_SWITCH', 'INFO', `Active View: ${currentView.toUpperCase()}`);
-  }, [currentView]);
-
-  // Chat State with Persistence
+  // --- Initial State Hydration ---
   const [messages, setMessages] = useState<Message[]>(() => {
-    const saved = localStorage.getItem('regis_messages');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        systemLog('PERSISTENCE', 'LOAD_MSG', 'SUCCESS', `Hydrated ${parsed.length} messages`);
-        return parsed;
-      } catch (e) {
-        systemLog('PERSISTENCE', 'LOAD_MSG', 'ERROR', 'Corruption detected in message store');
-      }
-    }
-    return [{
-      id: 'welcome',
-      text: "System initialized. Necro-Cyber link established.\n\nI am Regis. I have full access to your codebase and local environment. I can read your source files and make direct modifications. How can I assist you?",
-      sender: Sender.BOT,
-      timestamp: Date.now()
-    }];
+    try {
+      return JSON.parse(localStorage.getItem('regis_messages') || '[]');
+    } catch { return []; }
   });
 
-  // Registry State with Persistence
   const [registryItems, setRegistryItems] = useState<RegistryItem[]>(() => {
-    const saved = localStorage.getItem('regis_registry');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        systemLog('PERSISTENCE', 'LOAD_REG', 'SUCCESS', `Hydrated ${parsed.length} registry items`);
-        return parsed;
-      } catch (e) {
-        systemLog('PERSISTENCE', 'LOAD_REG', 'ERROR', 'Corruption detected in registry store');
-      }
-    }
-    return [
-      {
-        id: '1',
-        title: 'Project Phoenix Plan',
-        content: 'The Phoenix plan focuses on three core pillars: 1. Scalability of the backend infrastructure. 2. Frontend modernization using React 18. 3. AI integration for predictive analytics. The timeline is set for Q4 2024.',
-        category: 'General',
-        dateAdded: Date.now() - 10000000,
-        tags: ['plan', 'roadmap']
-      },
-      {
-        id: '2',
-        title: 'React Hooks Best Practices',
-        content: 'Always use useEffect for side effects. Don\'t lie to the dependency array. Use useMemo for expensive calculations and useCallback for passing functions to child components to prevent unnecessary re-renders.',
-        category: 'Code',
-        dateAdded: Date.now() - 5000000,
-        tags: ['react', 'dev']
-      }
-    ];
+    try {
+      const saved = localStorage.getItem('regis_registry');
+      return saved ? JSON.parse(saved) : [
+        {
+            id: '1',
+            title: 'Project Phoenix Plan',
+            content: 'The Phoenix plan focuses on three core pillars: 1. Scalability of the backend infrastructure. 2. Frontend modernization using React 18. 3. AI integration for predictive analytics. The timeline is set for Q4 2024.',
+            category: 'General',
+            dateAdded: Date.now() - 10000000,
+            tags: ['plan', 'roadmap']
+        }
+      ];
+    } catch { return []; }
   });
 
-  // Persist Messages
+  // --- Persistence Effects ---
   useEffect(() => {
     localStorage.setItem('regis_messages', JSON.stringify(messages));
-    // systemLog('PERSISTENCE', 'AUTO_SAVE', 'INFO', 'Messages synced to local storage'); // Commented out to reduce noise
   }, [messages]);
 
-  // Persist Registry
   useEffect(() => {
     localStorage.setItem('regis_registry', JSON.stringify(registryItems));
-    // systemLog('PERSISTENCE', 'AUTO_SAVE', 'INFO', 'Registry synced to local storage');
   }, [registryItems]);
+
+  // --- Boot Sequence Logging ---
+  useEffect(() => {
+    if (isAuthenticated) {
+      systemLog('SYSTEM_BOOT', 'INIT', 'INFO', `Starting Regis Kernel for User: ${currentUser}`);
+      setTimeout(() => systemLog('SYSTEM_BOOT', 'READY', 'SUCCESS', 'System Online'), 600);
+      
+      // Auto-Welcome
+      if (messages.length === 0) {
+        setMessages([{
+            id: 'welcome',
+            text: `System initialized. Necro-Cyber link established.\n\nWelcome back, Operator ${currentUser}.\nI am Regis. I have full access to your codebase and local environment. How can I assist you today?`,
+            sender: Sender.BOT,
+            timestamp: Date.now()
+        }]);
+      }
+    }
+  }, [isAuthenticated, currentUser]);
+
+  // --- Handlers ---
 
   const handleSaveToRegistry = async (content: string) => {
     systemLog('REGISTRY', 'ADD_ITEM', 'INFO', 'Processing new entry...');
-    // Optimistically add item
     const newItem: RegistryItem = {
       id: Date.now().toString(),
-      title: 'Generating Title...',
+      title: 'Analyzing...',
       content: content,
-      category: 'General', // Default, could be AI analyzed
+      category: 'General',
       dateAdded: Date.now(),
       tags: ['saved-from-chat']
     };
     
     setRegistryItems(prev => [newItem, ...prev]);
     
-    // Switch to registry view to show feedback
-    // setCurrentView(View.REGISTRY); // Optional: stay in chat or switch
-
-    // Async title generation
     const title = await generateTitleForRegistry(content);
-    
-    setRegistryItems(prev => prev.map(item => 
-      item.id === newItem.id ? { ...item, title } : item
-    ));
-    systemLog('REGISTRY', 'UPDATE_TITLE', 'SUCCESS', `Title assigned: ${title}`);
+    setRegistryItems(prev => prev.map(item => item.id === newItem.id ? { ...item, title } : item));
+    systemLog('REGISTRY', 'UPDATE_TITLE', 'SUCCESS', title);
   };
 
   const handleDeleteRegistryItem = (id: string) => {
-    systemLog('REGISTRY', 'DELETE', 'WARN', `Removing Node ID: ${id}`);
     setRegistryItems(prev => prev.filter(item => item.id !== id));
   };
 
+  if (!isAuthenticated) {
+      return <Launcher onLogin={(user) => { setCurrentUser(user); setIsAuthenticated(true); }} />;
+  }
+
   const renderView = () => {
     switch (currentView) {
-      case View.CHAT:
-        return (
-          <ChatArea 
-            messages={messages} 
-            setMessages={setMessages}
-            onSaveToRegistry={handleSaveToRegistry}
-          />
-        );
-      case View.REGISTRY:
-        return (
-          <Registry 
-            items={registryItems} 
-            onDeleteItem={handleDeleteRegistryItem}
-          />
-        );
-      case View.STATS:
-        return (
-          <Stats items={registryItems} />
-        );
-      default:
-        return <div>View not found</div>;
+      case View.CHAT: return <ChatArea messages={messages} setMessages={setMessages} onSaveToRegistry={handleSaveToRegistry} />;
+      case View.REGISTRY: return <Registry items={registryItems} onDeleteItem={handleDeleteRegistryItem} />;
+      default: return <div>View not found</div>;
     }
   };
 
   return (
     <div className="flex h-screen bg-black text-slate-100 overflow-hidden relative">
-      {/* Background Image Layer */}
       <div 
-        className="absolute inset-0 z-0 opacity-80"
+        className="absolute inset-0 z-0 opacity-40 pointer-events-none"
         style={{
-          backgroundImage: 'url(/background.jpg)', // Ensure your image is named background.jpg in public folder
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          filter: 'brightness(0.7) contrast(1.1)'
+          background: `
+            radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.15) 0%, transparent 60%),
+            radial-gradient(circle at 100% 0%, rgba(5, 150, 105, 0.2) 0%, transparent 50%),
+            linear-gradient(to bottom right, #000000 0%, #0f172a 100%)
+          `,
+          backgroundSize: '200% 200%',
         }}
       />
-      {/* Overlay Gradient for readability */}
-      <div className="absolute inset-0 z-0 bg-gradient-to-br from-black/80 via-black/40 to-emerald-900/30 pointer-events-none" />
+      <div className="absolute inset-0 z-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"></div>
 
-      {/* Content */}
       <div className="relative z-10 flex h-full w-full">
         <Sidebar currentView={currentView} onViewChange={setCurrentView} />
         <main className="flex-1 h-full overflow-hidden relative backdrop-blur-[2px]">

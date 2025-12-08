@@ -1,4 +1,4 @@
-import { GoogleGenAI, Chat, GenerateContentResponse, Modality, LiveServerMessage } from "@google/genai";
+import { GoogleGenAI, Chat, GenerateContentResponse, Modality, LiveServerMessage, Part } from "@google/genai";
 
 // --- System Logger ---
 const SYSTEM_START = Date.now();
@@ -23,6 +23,67 @@ export const systemLog = (module: string, action: string, status: 'INFO' | 'WARN
 systemLog('CORE', 'API_CLIENT', 'INFO', 'Initializing GoogleGenAI Client...');
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 systemLog('CORE', 'API_CLIENT', 'SUCCESS', 'Client Ready');
+
+// --- Audio Utilities ---
+
+export class AudioStreamPlayer {
+  private audioContext: AudioContext | null = null;
+  private nextStartTime: number = 0;
+  private sampleRate: number;
+
+  constructor(sampleRate: number = 24000) {
+    this.sampleRate = sampleRate;
+  }
+
+  public async initialize() {
+    if (!this.audioContext) {
+      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: this.sampleRate });
+    }
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+    }
+  }
+
+  public async play(base64PCM: string) {
+    if (!this.audioContext) await this.initialize();
+    const ctx = this.audioContext!;
+
+    const buffer = this.decodePCM(base64PCM, ctx);
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+
+    const currentTime = ctx.currentTime;
+    // Ensure we don't schedule in the past
+    if (this.nextStartTime < currentTime) {
+      this.nextStartTime = currentTime;
+    }
+
+    source.start(this.nextStartTime);
+    this.nextStartTime += buffer.duration;
+  }
+
+  public close() {
+    this.audioContext?.close();
+    this.audioContext = null;
+    this.nextStartTime = 0;
+  }
+
+  private decodePCM(base64: string, ctx: AudioContext): AudioBuffer {
+    const bin = atob(base64);
+    const len = bin.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+
+    const int16 = new Int16Array(bytes.buffer);
+    const float32 = new Float32Array(int16.length);
+    for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768.0;
+
+    const buffer = ctx.createBuffer(1, float32.length, this.sampleRate);
+    buffer.getChannelData(0).set(float32);
+    return buffer;
+  }
+}
 
 // --- Chat Session Management ---
 
@@ -50,7 +111,7 @@ const getChatSession = (): Chat => {
   if (!chatSession) {
     systemLog('CHAT_ENGINE', 'SESSION_INIT', 'INFO', 'Creating new Gemini 3 Pro session...');
     chatSession = ai.chats.create({
-      model: 'gemini-3-pro-preview', // Upgraded to Pro for complex tasks/chatbot
+      model: 'gemini-3-pro-preview',
       config: {
         systemInstruction: `You are Regis, an intelligent knowledge registry assistant with full system capabilities.
         
@@ -65,7 +126,7 @@ const getChatSession = (): Chat => {
         - Use the 'googleSearch' tool when users ask about current events or external information.
         - Use the 'googleMaps' tool when users ask about locations.
         - Be concise, professional, and helpful.`,
-        thinkingConfig: { thinkingBudget: 32768 }, // Max thinking budget for complex queries
+        thinkingConfig: { thinkingBudget: 32768 },
         tools: [
           { googleSearch: {} },
           { googleMaps: {} }
@@ -88,9 +149,9 @@ export const sendMessageStream = async (
   systemLog('CHAT_ENGINE', 'SEND_MESSAGE', 'INFO', { length: message.length, attachments: attachments.length });
 
   try {
-    const parts: any[] = [{ text: message }];
+    const parts: Part[] = [{ text: message }];
     
-    // Add attachments (images/video for analysis)
+    // Add attachments
     attachments.forEach(att => {
         parts.push({
             inlineData: {
@@ -102,7 +163,7 @@ export const sendMessageStream = async (
 
     const result = await chat.sendMessageStream({ 
         parts: parts 
-    }); // Chat.sendMessageStream takes parts directly or a message string
+    });
     
     systemLog('CHAT_ENGINE', 'STREAM_START', 'INFO');
 
@@ -111,7 +172,6 @@ export const sendMessageStream = async (
       const text = c.text || "";
       fullText += text;
       
-      // Extract grounding metadata if present
       const grounding = c.candidates?.[0]?.groundingMetadata;
       if (grounding) {
          systemLog('CHAT_ENGINE', 'GROUNDING_RX', 'INFO', grounding);
@@ -152,46 +212,39 @@ export const generateImage = async (
 ): Promise<string> => {
   systemLog('IMG_GEN', 'START', 'INFO', { prompt, settings });
   try {
-    // Editing Mode (Flash Image)
     if (settings.isEditing && settings.imageBase64) {
         systemLog('IMG_GEN', 'MODE_SWITCH', 'INFO', 'Editing Mode (Gemini Flash Image)');
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: {
                 parts: [
-                    { inlineData: { data: settings.imageBase64, mimeType: 'image/png' } }, // Assuming PNG/JPEG
+                    { inlineData: { data: settings.imageBase64, mimeType: 'image/png' } },
                     { text: prompt }
                 ]
             }
         });
-        // Find image part
         const parts = response.candidates?.[0]?.content?.parts || [];
         for (const part of parts) {
             if (part.inlineData) {
-                systemLog('IMG_GEN', 'COMPLETE', 'SUCCESS', 'Image Data Received');
                 return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
             }
         }
         throw new Error("No image generated in edit mode");
-    } 
-    // Generation Mode (Pro Image)
-    else {
+    } else {
         systemLog('IMG_GEN', 'MODE_SWITCH', 'INFO', 'Creation Mode (Gemini 3 Pro)');
-        // gemini-3-pro-image-preview
         const response = await ai.models.generateContent({
             model: 'gemini-3-pro-image-preview',
             contents: { parts: [{ text: prompt }] },
             config: {
                 imageConfig: {
                     aspectRatio: settings.aspectRatio || "1:1",
-                    imageSize: settings.width || "1K" // "1K", "2K", "4K"
+                    imageSize: settings.width || "1K"
                 }
             }
         });
          const parts = response.candidates?.[0]?.content?.parts || [];
         for (const part of parts) {
             if (part.inlineData) {
-                systemLog('IMG_GEN', 'COMPLETE', 'SUCCESS', 'Image Data Received');
                 return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
             }
         }
@@ -220,20 +273,16 @@ export const generateVideo = async (
         });
 
         systemLog('VIDEO_GEN', 'POLLING', 'INFO', 'Waiting for Veo rendering...');
-        // Polling
         while (!operation.done) {
             await new Promise(resolve => setTimeout(resolve, 5000));
             operation = await ai.operations.getVideosOperation({ operation: operation });
-            systemLog('VIDEO_GEN', 'POLLING', 'INFO', '...');
         }
 
         const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
         if (!videoUri) throw new Error("No video URI returned");
         
-        // Fetch actual bytes
         const response = await fetch(`${videoUri}&key=${process.env.API_KEY}`);
         const blob = await response.blob();
-        systemLog('VIDEO_GEN', 'COMPLETE', 'SUCCESS', 'Video Blob Created');
         return URL.createObjectURL(blob);
     } catch (error) {
         systemLog('VIDEO_GEN', 'ERROR', 'ERROR', error);
@@ -259,8 +308,7 @@ export const generateSpeech = async (text: string): Promise<string> => {
         
         const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
         if (!base64Audio) throw new Error("No audio data generated");
-        systemLog('TTS_ENGINE', 'SYNTHESIS', 'SUCCESS', 'Audio Buffer Ready');
-        return `data:audio/wav;base64,${base64Audio}`; // Assuming format
+        return `data:audio/wav;base64,${base64Audio}`;
     } catch (error) {
         systemLog('TTS_ENGINE', 'ERROR', 'ERROR', error);
         throw error;
@@ -274,20 +322,18 @@ export const transcribeAudio = async (audioBase64: string): Promise<string> => {
             model: "gemini-2.5-flash",
             contents: {
                 parts: [
-                    { inlineData: { data: audioBase64, mimeType: 'audio/wav' } }, // Adjust mime type as needed
+                    { inlineData: { data: audioBase64, mimeType: 'audio/wav' } },
                     { text: "Transcribe this audio exactly." }
                 ]
             }
         });
         const text = response.text || "";
-        systemLog('AUDIO_PROC', 'TRANSCRIPT', 'SUCCESS', { textLength: text.length });
         return text;
     } catch (error) {
         systemLog('AUDIO_PROC', 'ERROR', 'ERROR', error);
         throw error;
     }
 }
-
 
 // --- Live API (Simplified Wrapper) ---
 
@@ -303,7 +349,6 @@ export const connectLiveSession = async (
     const source = audioContext.createMediaStreamSource(stream);
     const processor = audioContext.createScriptProcessor(4096, 1, 1);
     
-    // Connect to Live API
     const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         config: {
@@ -315,17 +360,14 @@ export const connectLiveSession = async (
         callbacks: {
             onopen: () => {
                 systemLog('LIVE_LINK', 'STATUS', 'SUCCESS', 'Connection Secured. Streaming Audio.');
-                // Start pumping audio
                 processor.onaudioprocess = (e) => {
                     const inputData = e.inputBuffer.getChannelData(0);
-                    // Convert Float32 to PCM Int16
-                     const l = inputData.length;
+                    const l = inputData.length;
                     const int16 = new Int16Array(l);
                     for (let i = 0; i < l; i++) {
                         int16[i] = inputData[i] * 32768;
                     }
                     
-                    // Simple b64 encode for PCM (manual)
                     let binary = '';
                     const bytes = new Uint8Array(int16.buffer);
                     const len = bytes.byteLength;
@@ -349,7 +391,6 @@ export const connectLiveSession = async (
             onmessage: (msg: LiveServerMessage) => {
                 const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
                 if (audioData) {
-                    // systemLog('LIVE_LINK', 'RX', 'INFO', 'Audio Chunk Received'); // Too verbose for normal logs
                     onAudioData(audioData);
                 }
             },
@@ -373,23 +414,7 @@ export const connectLiveSession = async (
             const session = await sessionPromise;
             session.close();
             stream.getTracks().forEach(t => t.stop());
+            audioContext.close();
         }
     };
-};
-
-
-// --- System Operations Mocks ---
-
-export const readFileContent = async (filePath: string): Promise<string> => {
-  systemLog('FS_LAYER', 'READ', 'INFO', filePath);
-  return `[Mock Content of ${filePath}]`;
-};
-
-export const writeFileContent = async (filePath: string, content: string): Promise<void> => {
-  systemLog('FS_LAYER', 'WRITE', 'WARN', `Write to ${filePath} intercepted (Simulation Mode)`);
-};
-
-export const executeSystemCommand = async (command: string): Promise<string> => {
-  systemLog('KERNEL', 'EXEC', 'WARN', `Command: ${command}`);
-  return `Command executed (simulated): ${command}`;
 };
