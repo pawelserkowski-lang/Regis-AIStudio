@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host --clearScreen false",
+    "prelauncher": "npm install",
     "launcher": "vite --host --open --clearScreen false",
     "build": "tsc && vite build",
     "preview": "vite preview"

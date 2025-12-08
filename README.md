@@ -62,16 +62,18 @@ Regis utilizes a specific orchestration of Gemini models optimized for distinct 
 1.  **Node.js**: You must have Node.js installed on your computer. [Download Here](https://nodejs.org/).
 2.  **API Key**: You will need a Google Gemini API Key. You can enter this directly in the App Launcher UI.
 
-### 🚀 Quick Start (Windows)
-1.  Double-click the file **`start_regis.bat`**.
-2.  The system will automatically install dependencies (first run only) and launch the application in your browser.
+### 🚀 Quick Start (Terminal)
+Open your terminal in the project folder and run:
 
-### Manual Start (Mac/Linux)
-Open a terminal in the project folder and run:
 ```bash
+# Install dependencies (First run only)
 npm install
-npm run dev
+
+# Start the application
+npm run launcher
 ```
+
+This will automatically open the application in your default browser.
 
 ---
 *EPS AI SOLUTIONS // SYSTEM END OF FILE*
