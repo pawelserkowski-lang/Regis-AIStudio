@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { Bot, User, BookmarkPlus, Loader2, Paperclip, Image as ImageIcon, Video, Mic, Sparkles, X, MapPin, Globe, Volume2, StopCircle, CornerDownLeft, Radio, Search, ScanEye } from 'lucide-react';
-import { Message, Sender, Attachment, DetectionBox } from '../types';
-import { sendMessageStream, generateImage, generateVideo, generateSpeech, connectLiveSession, transcribeAudio, AudioStreamPlayer, detectUIElements } from '../services/geminiService';
+import { Bot, User, BookmarkPlus, Loader2, Paperclip, Image as ImageIcon, Video, Mic, Sparkles, X, MapPin, Globe, Volume2, StopCircle, CornerDownLeft, Radio, Search, ScanEye, ChevronDown, Cpu } from 'lucide-react';
+import { Message, Sender, Attachment, DetectionBox, AIModelId } from '../types';
+import { sendMessageStream, generateImage, generateVideo, generateSpeech, connectLiveSession, transcribeAudio, AudioStreamPlayer, detectUIElements, getChatModel, setChatModel } from '../services/geminiService';
 import FileListView from './FileListView';
 import VisualAnalyzer from './VisualAnalyzer';
 
@@ -17,6 +17,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [showTools, setShowTools] = useState(false);
   
+  // Model State
+  const [currentModel, setCurrentModel] = useState<AIModelId>(getChatModel());
+  const [showModelMenu, setShowModelMenu] = useState(false);
+
   // Live Mode State
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [liveSession, setLiveSession] = useState<any>(null);
@@ -57,6 +61,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
   }, [input]);
 
   // --- Handlers ---
+
+  const handleModelChange = (model: AIModelId) => {
+      setChatModel(model);
+      setCurrentModel(model);
+      setShowModelMenu(false);
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -320,17 +330,51 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
       {isLiveMode && renderLiveOverlay()}
 
       {/* Header */}
-      <div className="px-6 py-4 bg-black/40 backdrop-blur-md sticky top-0 z-10 flex justify-between items-center border-b border-white/5 shadow-lg shadow-black/20">
-        <div className="flex items-center gap-3">
+      <div className="px-6 py-4 bg-black/60 backdrop-blur-md sticky top-0 z-10 flex justify-between items-center border-b border-white/5 shadow-lg shadow-black/20">
+        
+        {/* Model Switcher Area */}
+        <div className="flex items-center gap-3 relative">
             <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
                 <Bot className="text-emerald-400" size={20} />
             </div>
-            <div className="hidden md:block">
-                <h2 className="text-lg font-bold text-slate-100 leading-tight font-mono">Regis_Assistant</h2>
-                <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_5px_#10b981]"></span>
-                    <p className="text-xs text-emerald-400/70 font-medium tracking-wide">SYSTEM ONLINE</p>
-                </div>
+            
+            <div className="relative">
+                <button 
+                    onClick={() => setShowModelMenu(!showModelMenu)}
+                    className="flex items-center gap-2 group hover:bg-white/5 px-2 py-1 rounded-lg transition-colors"
+                >
+                    <div className="text-left">
+                        <h2 className="text-sm font-bold text-slate-100 leading-none font-mono tracking-wide">{currentModel}</h2>
+                        <div className="flex items-center gap-1.5 mt-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_5px_#10b981]"></span>
+                            <p className="text-[10px] text-emerald-400/70 font-medium tracking-wide">ACTIVE MODEL</p>
+                        </div>
+                    </div>
+                    <ChevronDown size={14} className={`text-slate-500 transition-transform ${showModelMenu ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Model Dropdown */}
+                {showModelMenu && (
+                    <div className="absolute top-full left-0 mt-2 w-64 bg-black/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl p-1 z-50 animate-in fade-in slide-in-from-top-2">
+                        {[
+                            { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', desc: 'Reasoning & Coding (Best)' },
+                            { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', desc: 'High speed, low latency' },
+                            { id: 'gemini-2.5-flash-thinking', name: 'Flash Thinking', desc: 'Deep thought process' }
+                        ].map((m) => (
+                            <button
+                                key={m.id}
+                                onClick={() => handleModelChange(m.id as AIModelId)}
+                                className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between group transition-colors ${currentModel === m.id ? 'bg-emerald-500/10 border border-emerald-500/30' : 'hover:bg-white/5 border border-transparent'}`}
+                            >
+                                <div>
+                                    <div className={`text-sm font-bold font-mono ${currentModel === m.id ? 'text-emerald-400' : 'text-slate-200'}`}>{m.name}</div>
+                                    <div className="text-[10px] text-slate-500">{m.desc}</div>
+                                </div>
+                                {currentModel === m.id && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]"></div>}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
 
@@ -408,7 +452,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
                   <div className={`group relative p-5 rounded-2xl shadow-lg backdrop-blur-sm ${
                     msg.sender === Sender.USER 
                       ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-tr-sm' 
-                      : 'bg-black/40 text-slate-200 border border-white/10 rounded-tl-sm'
+                      : 'bg-black/60 text-slate-200 border border-white/10 rounded-tl-sm'
                   }`}>
                     {/* Render Visual Analysis Result (if detected) */}
                     {msg.visualAnalysis && msg.attachments && msg.attachments[0] && (

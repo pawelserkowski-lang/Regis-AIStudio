@@ -1,11 +1,40 @@
 import { GoogleGenAI, Chat, GenerateContentResponse, Modality, LiveServerMessage, Part, Type } from "@google/genai";
-import { DetectionBox } from "../types";
+import { DetectionBox, AIModelId } from "../types";
 
 // --- System Logger ---
 const SYSTEM_START = Date.now();
 
+export interface LogEntry {
+  id: string;
+  timestamp: number;
+  uptime: string;
+  module: string;
+  action: string;
+  status: 'INFO' | 'WARN' | 'ERROR' | 'SUCCESS';
+  data?: any;
+}
+
+// In-memory log storage
+const logHistory: LogEntry[] = [];
+const MAX_LOGS = 500;
+
 export const systemLog = (module: string, action: string, status: 'INFO' | 'WARN' | 'ERROR' | 'SUCCESS', data?: any) => {
-  const uptime = ((Date.now() - SYSTEM_START) / 1000).toFixed(3);
+  const now = Date.now();
+  const uptime = ((now - SYSTEM_START) / 1000).toFixed(3);
+  
+  const entry: LogEntry = {
+    id: now.toString() + Math.random().toString().slice(2,6),
+    timestamp: now,
+    uptime,
+    module,
+    action,
+    status,
+    data
+  };
+
+  logHistory.unshift(entry); // Add to beginning
+  if (logHistory.length > MAX_LOGS) logHistory.pop();
+
   const colorMap = {
     'INFO': 'color: #94a3b8', // Slate 400
     'WARN': 'color: #facc15', // Yellow 400
@@ -20,10 +49,15 @@ export const systemLog = (module: string, action: string, status: 'INFO' | 'WARN
   );
 };
 
+export const getLogs = (): LogEntry[] => {
+  return logHistory;
+};
+
 // --- Singleton Client Management ---
 
 let aiClientInstance: GoogleGenAI | null = null;
 let chatSession: Chat | null = null;
+let currentChatModel: AIModelId = 'gemini-3-pro-preview';
 
 const getApiKey = () => {
   // Check Environment (Vite injection)
@@ -37,8 +71,6 @@ const getApiKey = () => {
   return '';
 };
 
-// Lazy initialization ensures we don't crash on load if key is missing,
-// and we pick up the key immediately after the user saves it in Launcher.
 const getAIClient = (): GoogleGenAI => {
     if (!aiClientInstance) {
         const key = getApiKey();
@@ -51,6 +83,16 @@ const getAIClient = (): GoogleGenAI => {
     }
     return aiClientInstance;
 };
+
+export const setChatModel = (modelId: AIModelId) => {
+  if (currentChatModel !== modelId) {
+    systemLog('CHAT_ENGINE', 'MODEL_SWITCH', 'WARN', `Switching from ${currentChatModel} to ${modelId}`);
+    currentChatModel = modelId;
+    chatSession = null; // Force session recreate with new model
+  }
+};
+
+export const getChatModel = (): AIModelId => currentChatModel;
 
 // --- Utilities ---
 
@@ -217,10 +259,9 @@ DO NOT ASK THE USER TO PASTE CODE.
 const getChatSession = (): Chat => {
   if (!chatSession) {
     const ai = getAIClient();
-    systemLog('CHAT_ENGINE', 'SESSION_INIT', 'INFO', 'Creating new Gemini 3 Pro session...');
-    chatSession = ai.chats.create({
-      model: 'gemini-3-pro-preview',
-      config: {
+    systemLog('CHAT_ENGINE', 'SESSION_INIT', 'INFO', `Creating new ${currentChatModel} session...`);
+    
+    const config: any = {
         systemInstruction: `You are Regis, an intelligent knowledge registry assistant with full system capabilities.
         
         ${FILE_SYSTEM_CONTEXT}
@@ -234,12 +275,20 @@ const getChatSession = (): Chat => {
         - Use the 'googleSearch' tool when users ask about current events or external information.
         - Use the 'googleMaps' tool when users ask about locations.
         - Be concise, professional, and helpful.`,
-        thinkingConfig: { thinkingBudget: 32768 },
         tools: [
           { googleSearch: {} },
           { googleMaps: {} }
         ]
-      },
+    };
+
+    // Only add thinking budget for compatible models
+    if (currentChatModel === 'gemini-3-pro-preview' || currentChatModel === 'gemini-2.5-flash-thinking') {
+       config.thinkingConfig = { thinkingBudget: 1024 }; 
+    }
+
+    chatSession = ai.chats.create({
+      model: currentChatModel,
+      config: config,
     });
     systemLog('CHAT_ENGINE', 'SESSION_INIT', 'SUCCESS', 'Session Established');
   }
@@ -254,7 +303,7 @@ export const sendMessageStream = async (
   const chat = getChatSession();
   let fullText = "";
   
-  systemLog('CHAT_ENGINE', 'SEND_MESSAGE', 'INFO', { length: message.length, attachments: attachments.length });
+  systemLog('CHAT_ENGINE', 'SEND_MESSAGE', 'INFO', { model: currentChatModel, length: message.length, attachments: attachments.length });
 
   try {
     const parts: Part[] = [{ text: message }];
@@ -269,7 +318,7 @@ export const sendMessageStream = async (
     });
 
     const result = await chat.sendMessageStream({ 
-        message: parts
+        parts: parts 
     });
     
     systemLog('CHAT_ENGINE', 'STREAM_START', 'INFO');

@@ -2,14 +2,17 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import Registry from './components/Registry';
+import BuildTools from './components/BuildTools';
+import SystemLogs from './components/SystemLogs';
 import Launcher from './components/Launcher';
 import { View, Message, RegistryItem, Sender } from './types';
 import { generateTitleForRegistry, systemLog } from './services/geminiService';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.CHAT);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState<string>('Guest');
+  // Default to authenticated to skip login as requested
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [currentUser, setCurrentUser] = useState<string>('Admin');
 
   // --- Initial State Hydration ---
   const [messages, setMessages] = useState<Message[]>(() => {
@@ -93,23 +96,27 @@ const App: React.FC = () => {
     switch (currentView) {
       case View.CHAT: return <ChatArea messages={messages} setMessages={setMessages} onSaveToRegistry={handleSaveToRegistry} />;
       case View.REGISTRY: return <Registry items={registryItems} onDeleteItem={handleDeleteRegistryItem} />;
+      case View.BUILD: return <BuildTools />;
+      case View.LOGS: return <SystemLogs />;
       default: return <div>View not found</div>;
     }
   };
 
   return (
     <div className="flex h-screen bg-black text-slate-100 overflow-hidden relative">
-      {/* Necro-Cyber Generative Background (Pure CSS) */}
-      {/* Layer 1: Base Dark Green Pulse */}
+      {/* Necro-Cyber Generative Background with Custom Image */}
       <div 
-        className="absolute inset-0 z-0 opacity-40 pointer-events-none"
+        className="absolute inset-0 z-0 bg-cover bg-center opacity-40 pointer-events-none"
         style={{
-          background: 'radial-gradient(circle at 50% 50%, #064e3b 0%, #020617 80%)',
+          backgroundImage: "url('https://pawelserkowski.pl/background.png')",
         }}
       />
       
+      {/* Dark Overlay to ensure text readability over the image */}
+      <div className="absolute inset-0 z-0 bg-black/60 pointer-events-none"></div>
+
       {/* Layer 2: Smoke/Fog Simulation */}
-      <div className="absolute inset-0 z-0 opacity-30 pointer-events-none mix-blend-screen"
+      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none mix-blend-screen"
          style={{
            backgroundImage: 'radial-gradient(at 80% 0%, hsla(148,60%,20%,1) 0px, transparent 50%), radial-gradient(at 0% 50%, hsla(158,60%,15%,1) 0px, transparent 50%), radial-gradient(at 80% 100%, hsla(148,60%,20%,1) 0px, transparent 50%)',
            filter: 'blur(40px)'

@@ -39,5 +39,9 @@ export interface RegistryItem {
 
 export enum View {
   CHAT = 'chat',
-  REGISTRY = 'registry'
+  REGISTRY = 'registry',
+  BUILD = 'build',
+  LOGS = 'logs'
 }
+
+export type AIModelId = 'gemini-3-pro-preview' | 'gemini-2.5-flash' | 'gemini-2.5-flash-thinking';
