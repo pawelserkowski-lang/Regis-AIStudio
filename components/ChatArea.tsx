@@ -157,11 +157,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
             }
           );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Message Error", error);
+      const errDetail = error?.message || "Unknown error";
       setMessages(prev => prev.map(msg => 
         msg.id === botMessageId 
-          ? { ...msg, text: "I encountered an error connecting to my services. Please try again." }
+          ? { ...msg, text: `I encountered an error connecting to my services.\n\nTECHNICAL_DETAILS:\n${errDetail}\n\nPlease verify your API Key and Network Connection.` }
           : msg
       ));
     } finally {
@@ -358,8 +359,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
                     <div className="absolute top-full left-0 mt-2 w-64 bg-black/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl p-1 z-50 animate-in fade-in slide-in-from-top-2">
                         {[
                             { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', desc: 'Reasoning & Coding (Best)' },
-                            { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', desc: 'High speed, low latency' },
-                            { id: 'gemini-2.5-flash-thinking', name: 'Flash Thinking', desc: 'Deep thought process' }
+                            { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', desc: 'High speed, low latency' }
                         ].map((m) => (
                             <button
                                 key={m.id}
@@ -569,7 +569,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onSaveToRegi
                         ref={textareaRef}
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                        onKeyDown={(e) => { 
+                            if (e.key === 'Enter') {
+                                // Send if Ctrl+Enter is pressed OR (Enter is pressed AND Shift is NOT pressed)
+                                if (e.ctrlKey || !e.shiftKey) {
+                                    e.preventDefault(); 
+                                    handleSend(); 
+                                }
+                            }
+                        }}
                         placeholder={attachments.length > 0 ? "Ask about this media..." : "Type a message..."}
                         className="w-full pl-2 pr-2 py-3 bg-transparent border-none focus:ring-0 resize-none max-h-32 min-h-[50px] scrollbar-hide text-slate-100 placeholder:text-slate-500"
                         rows={1}

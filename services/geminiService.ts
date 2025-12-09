@@ -281,8 +281,8 @@ const getChatSession = (): Chat => {
         ]
     };
 
-    // Only add thinking budget for compatible models
-    if (currentChatModel === 'gemini-3-pro-preview' || currentChatModel === 'gemini-2.5-flash-thinking') {
+    // Only add thinking budget for compatible models (gemini-3-pro-preview)
+    if (currentChatModel === 'gemini-3-pro-preview') {
        config.thinkingConfig = { thinkingBudget: 1024 }; 
     }
 
@@ -300,45 +300,80 @@ export const sendMessageStream = async (
   attachments: { data: string; mimeType: string }[] = [],
   onChunk: (text: string, grounding?: any) => void
 ): Promise<string> => {
-  const chat = getChatSession();
   let fullText = "";
   
   systemLog('CHAT_ENGINE', 'SEND_MESSAGE', 'INFO', { model: currentChatModel, length: message.length, attachments: attachments.length });
 
-  try {
-    const parts: Part[] = [{ text: message }];
-    
-    attachments.forEach(att => {
-        parts.push({
-            inlineData: {
-                data: att.data,
-                mimeType: att.mimeType
-            }
-        });
-    });
+  // Construct Parts
+  const parts: Part[] = [];
 
-    const result = await chat.sendMessageStream({ 
-        parts: parts 
-    });
-    
-    systemLog('CHAT_ENGINE', 'STREAM_START', 'INFO');
+  // Attachments first
+  attachments.forEach(att => {
+      parts.push({
+          inlineData: {
+              data: att.data,
+              mimeType: att.mimeType
+          }
+      });
+  });
 
-    for await (const chunk of result) {
-      const c = chunk as GenerateContentResponse;
-      const text = c.text || "";
-      fullText += text;
-      
-      const grounding = c.candidates?.[0]?.groundingMetadata;
-      if (grounding) {
-         systemLog('CHAT_ENGINE', 'GROUNDING_RX', 'INFO', grounding);
+  // Text content
+  if (message && message.trim()) {
+      parts.push({ text: message });
+  }
+  
+  // Guard against empty parts
+  if (parts.length === 0) {
+      parts.push({ text: " " }); 
+  }
+
+  // Determine payload: strict string if text-only, array if multimodal
+  const messagePayload = (parts.length === 1 && parts[0].text) 
+    ? parts[0].text 
+    : parts;
+
+  // Helper to handle stream processing to avoid code duplication in fallback
+  const processStream = async (result: any) => {
+      systemLog('CHAT_ENGINE', 'STREAM_START', 'INFO');
+      for await (const chunk of result) {
+        const c = chunk as GenerateContentResponse;
+        const text = c.text || "";
+        fullText += text;
+        
+        const grounding = c.candidates?.[0]?.groundingMetadata;
+        if (grounding) {
+           systemLog('CHAT_ENGINE', 'GROUNDING_RX', 'INFO', grounding);
+        }
+        
+        onChunk(text, grounding);
       }
-      
-      onChunk(text, grounding);
-    }
-    systemLog('CHAT_ENGINE', 'STREAM_COMPLETE', 'SUCCESS', { totalLength: fullText.length });
-  } catch (error) {
+      systemLog('CHAT_ENGINE', 'STREAM_COMPLETE', 'SUCCESS', { totalLength: fullText.length });
+  }
+
+  try {
+    const chat = getChatSession();
+    // Using object wrapper with 'message' property
+    const result = await chat.sendMessageStream({ message: messagePayload });
+    await processStream(result);
+  } catch (error: any) {
     systemLog('CHAT_ENGINE', 'STREAM_ERROR', 'ERROR', error);
-    throw error;
+
+    // Auto-Fallback: If 3-Pro fails, try Flash
+    if (currentChatModel === 'gemini-3-pro-preview') {
+         systemLog('CHAT_ENGINE', 'FALLBACK', 'WARN', 'Gemini 3 Pro failed. Initiating fallback to Gemini 2.5 Flash.');
+         setChatModel('gemini-2.5-flash');
+         const fallbackChat = getChatSession(); // Recreates session with new model
+         
+         try {
+             const result = await fallbackChat.sendMessageStream({ message: messagePayload });
+             await processStream(result);
+         } catch (fallbackError) {
+             // If fallback also fails, propagate the error
+             throw fallbackError;
+         }
+    } else {
+        throw error;
+    }
   }
 
   return fullText;

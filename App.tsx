@@ -108,7 +108,7 @@ const App: React.FC = () => {
       <div 
         className="absolute inset-0 z-0 bg-cover bg-center opacity-40 pointer-events-none"
         style={{
-          backgroundImage: "url('https://pawelserkowski.pl/background.png')",
+          backgroundImage: "url('https://pawelserkowski.pl/background.webp')",
         }}
       />
       

@@ -154,7 +154,6 @@ const BuildTools: React.FC = () => {
                                         <div className="text-2xl font-bold text-white tracking-tight">24.5k</div>
                                     </div>
                                     <div className="bg-black border border-white/10 p-4 rounded-lg hover:border-white/30 transition-colors">
-                                        {/* Added Cpu import to fix missing name error */}
                                         <div className="text-zinc-500 text-xs font-mono mb-2 flex items-center gap-2"><Cpu size={12}/> EDGE_LATENCY</div>
                                         <div className="text-2xl font-bold text-emerald-400 tracking-tight">45ms</div>
                                     </div>

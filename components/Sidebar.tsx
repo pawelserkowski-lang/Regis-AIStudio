@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageSquare, Github, Layers, Terminal, Cpu, Hammer, ScrollText } from 'lucide-react';
+import { MessageSquare, Github, Layers, Terminal, Hammer, ScrollText } from 'lucide-react';
 import { View } from '../types';
 
 interface SidebarProps {
@@ -30,17 +30,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) => {
                 REGIS_KERNEL_V1
             </div>
 
-            {/* Desktop View: Provided EPS Logo Image - Maximized */}
-            <div className="hidden md:flex flex-col items-center w-full group cursor-default">
-                <div className="relative w-full h-auto mb-4">
-                     <div className="relative flex flex-col items-center justify-center py-2">
-                        <img 
-                            src="https://pawelserkowski.pl/logo.png" 
-                            alt="EPS AI Solutions" 
-                            className="w-full h-auto drop-shadow-[0_0_12px_rgba(16,185,129,0.6)] px-1"
-                        />
-                     </div>
-                </div>
+            {/* Desktop View: Provided Logo Image - Maximized */}
+            <div className="hidden md:flex items-center justify-center w-full mb-6 mt-2">
+                <img 
+                    src="https://pawelserkowski.pl/logo.webp" 
+                    alt="EPS AI Solutions" 
+                    className="w-full h-auto block"
+                />
             </div>
         </div>
 
