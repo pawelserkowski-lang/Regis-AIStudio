@@ -8,7 +8,10 @@
     "prelauncher": "npm install",
     "launcher": "vite --host --open --clearScreen false",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:all": "npm run test:backend && npm run test:frontend",
+    "test:backend": "python3 tests/test_integration.py",
+    "test:frontend": "vitest run"
   },
   "dependencies": {
     "@google/genai": "^1.31.0",
@@ -19,14 +22,19 @@
     "recharts": "^2.15.0"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
     "@types/node": "^24.10.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.18",
+    "jsdom": "^27.3.0",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.2.2",
-    "vite": "^5.1.4"
+    "vite": "^5.1.4",
+    "vitest": "^4.0.15"
   }
 }
