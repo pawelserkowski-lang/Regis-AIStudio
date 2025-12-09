@@ -33,7 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) => {
             {/* Desktop View: Provided Logo Image - Maximized */}
             <div className="hidden md:flex items-center justify-center w-full mb-6 mt-2">
                 <img 
-                    src="https://pawelserkowski.pl/logo.webp" 
+                    src="/static/images/logo.webp"
                     alt="EPS AI Solutions" 
                     className="w-full h-auto block"
                 />

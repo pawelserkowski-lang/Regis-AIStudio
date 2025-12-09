@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { GoogleGenAI, Chat, GenerateContentResponse, Modality, LiveServerMessage, Part, Type } from "@google/genai";
 import { DetectionBox, AIModelId } from "../types";
 
@@ -61,6 +62,14 @@ let currentChatModel: AIModelId = 'gemini-3-pro-preview';
 
 const getApiKey = () => {
   // Check Environment (Vite injection)
+  if (import.meta.env.VITE_API_KEY) {
+    return import.meta.env.VITE_API_KEY;
+  }
+  // Check Google Cloud/Vercel Environment
+  if (import.meta.env.GOOGLE_API_KEY) {
+    return import.meta.env.GOOGLE_API_KEY;
+  }
+  // Legacy/Process check
   if (process.env.API_KEY && process.env.API_KEY.length > 0) {
     return process.env.API_KEY;
   }
