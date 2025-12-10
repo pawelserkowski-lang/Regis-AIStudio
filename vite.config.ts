@@ -12,7 +12,10 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 3000,
-      open: true
+      open: true,
+      proxy: {
+        '/api': 'http://localhost:8000'
+      }
     },
     test: {
       globals: true,

@@ -1,16 +1,19 @@
 # System Architecture: Project Phoenix
 
-**Version:** 1.0.0  
+**Version:** 1.1.0
 **Status:** [ONLINE]
 
 ## 1. High-Level Overview
 
-Regis is a Single Page Application (SPA) designed as a "Zero-Build" React app that runs directly in the browser using ES Modules. This architecture allows for rapid prototyping and deployment without heavy build pipelines, while still leveraging modern frameworks like React and Tailwind CSS.
+Regis is a **Hybrid Serverless Application** designed for high-performance AI interaction. It combines a "Zero-Build" philosophy for the frontend (React 19) with a lightweight Python backend for server-side orchestration and configuration.
 
 ### Core Principles
--   **Client-Side Sovereignty:** All logic, including AI model orchestration, happens in the user's browser.
+-   **Client-Side Sovereignty:** High-bandwidth AI tasks (Streaming, Live Audio) occur directly in the browser to minimize latency.
+-   **Serverless Extensions:** Python functions (Vercel Runtime) handle environment configuration, security checks, and future orchestrated tasks.
 -   **Ephemeral & Persistent State:** Session data is handled in memory, while long-term data (Registry, Chat History) is persisted to `localStorage`.
--   **Direct API Integration:** The app communicates directly with Google's Gemini API endpoints using the `@google/genai` SDK.
+-   **Direct & Proxied API:**
+    -   *Generative Tasks:* Direct connection to Gemini API via `@google/genai`.
+    -   *System Tasks:* Proxied requests to the Python backend via `/api/*`.
 
 ## 2. Component Architecture
 
@@ -71,5 +74,19 @@ graph TD
 
 ## 5. Security Protocols
 
-*   **API Key:** Injected via `process.env.API_KEY`. The architecture assumes a secure environment where this key is not exposed to unauthorized public users (e.g., an internal tool or local deployment).
+*   **API Key:** Injected via `import.meta.env` (Vite) or `os.environ` (Python).
 *   **Data Privacy:** All user data resides in `localStorage` and is never sent to a third-party server other than Google's AI endpoints for processing.
+
+## 6. Development Environment
+
+To ensure a seamless developer experience (DX), the project uses a custom local orchestration layer:
+
+### 6.1. Supervisor (Backend)
+-   **File:** `api/local_server.py`
+-   **Function:** Wraps the Vercel-compatible `handler` in a standard Python `HTTPServer`.
+-   **Auto-Reload:** A custom file watcher monitors `api/*.py` (ignoring `__pycache__`) and restarts the server process immediately upon detection of changes.
+
+### 6.2. Proxy (Frontend)
+-   **Config:** `vite.config.ts`
+-   **Function:** Forwards all requests matching `/api/*` from the Vite dev server (port 3000) to the Python Supervisor (port 8000).
+-   **Benefit:** Simulates the Vercel production routing environment locally, preventing CORS issues and path mismatches.
