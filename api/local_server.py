@@ -27,7 +27,9 @@ def load_env():
 def get_mtimes(directory):
     """Get modification times of all .py files in a directory."""
     mtimes = {}
-    for root, _, files in os.walk(directory):
+    for root, dirs, files in os.walk(directory):
+        if '__pycache__' in dirs:
+            dirs.remove('__pycache__')
         for f in files:
             if f.endswith('.py'):
                 path = os.path.join(root, f)
