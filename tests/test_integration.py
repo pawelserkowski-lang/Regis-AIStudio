@@ -35,12 +35,13 @@ class TestBackendIntegration(unittest.TestCase):
         h.send_header = MagicMock()
         h.end_headers = MagicMock()
 
+        h.path = '/'
         # Act: Simulate GET request
         h.do_GET()
 
         # Assert: Verify response headers
         h.send_response.assert_called_with(200)
-        h.send_header.assert_called_with('Content-type', 'application/json')
+        h.send_header.assert_any_call('Content-type', 'application/json')
 
         # Assert: Verify response body
         response_json = mock_wfile.getvalue().decode()
@@ -71,6 +72,7 @@ class TestBackendIntegration(unittest.TestCase):
         h.send_header = MagicMock()
         h.end_headers = MagicMock()
 
+        h.path = '/'
         # Act
         h.do_GET()
 
