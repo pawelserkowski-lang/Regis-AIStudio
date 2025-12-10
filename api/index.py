@@ -17,10 +17,25 @@ class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self): self._set_headers()
 
     def do_GET(self):
+        api_key = os.environ.get('GOOGLE_API_KEY')
+        if not api_key:
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Missing Configuration"}).encode())
+            return
+
         if self.path == '/api/config':
-            k = os.environ.get('GOOGLE_API_KEY', '')
             self._set_headers(200)
-            self.wfile.write(json.dumps({"envKey": k}).encode())
+            self.wfile.write(json.dumps({"envKey": api_key}).encode())
+        elif self.path == '/' or self.path == '/api':
+            self._set_headers(200)
+            response_data = {
+                "status": "Alive",
+                "backend": "Python Serverless",
+                "react_version_target": "19.2.1"
+            }
+            self.wfile.write(json.dumps(response_data).encode())
         else: self._set_headers(404)
 
     def do_POST(self):

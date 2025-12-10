@@ -15,6 +15,11 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': 'http://localhost:8000'
       }
+    },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: './tests/setup.ts',
     }
   };
 });

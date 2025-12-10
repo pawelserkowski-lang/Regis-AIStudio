@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "vite --host --no-open --clearScreen false",
     "build": "tsc && vite build",
-    "launcher": "vite --host --no-open --clearScreen false", 
+    "launcher": "vite --host --no-open --clearScreen false",
+    "test:backend": "python3 -m unittest tests/test_integration.py",
+    "test:frontend": "vitest run",
     "test:all": "npm run test:backend && npm run test:frontend"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.21.0", 
+    "@google/generative-ai": "^0.21.0",
     "emoji-picker-react": "^4.9.2",
     "lucide-react": "^0.556.0",
     "react": "^19.0.0",
@@ -18,8 +20,11 @@
     "recharts": "^2.15.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.18",
+    "jsdom": "^27.3.0",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.2.2",
