@@ -30,6 +30,8 @@ FILES["package.json"] = r'''{
     "dev": "vite --host --no-open --clearScreen false",
     "build": "tsc && vite build",
     "launcher": "vite --host --no-open --clearScreen false", 
+    "test:backend": "python -m unittest discover tests",
+    "test:frontend": "vitest run",
     "test:all": "npm run test:backend && npm run test:frontend"
   },
   "dependencies": {
@@ -41,17 +43,21 @@ FILES["package.json"] = r'''{
     "recharts": "^2.15.0"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/jest-dom": "^6.4.2",
+    "jsdom": "^25.0.1",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.18",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.2.2",
     "vite": "^5.1.4",
-    "vitest": "^4.0.15"
+    "vitest": "^2.1.8"
   }
 }'''
 
-FILES["vite.config.ts"] = r'''import { defineConfig, loadEnv } from 'vite';
+FILES["vite.config.ts"] = r'''/// <reference types="vitest" />
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
@@ -68,6 +74,11 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': 'http://localhost:8000'
       }
+    },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: './tests/setup.ts',
     }
   };
 });'''
@@ -669,7 +680,21 @@ class handler(BaseHTTPRequestHandler):
             k = os.environ.get('GOOGLE_API_KEY', '')
             self._set_headers(200)
             self.wfile.write(json.dumps({"envKey": k}).encode())
-        else: self._set_headers(404)
+        elif self.path == '/' or self.path == '/api':
+            api_key = os.environ.get('GOOGLE_API_KEY')
+            if not api_key:
+                self._set_headers(500)
+                self.wfile.write(json.dumps({"error": "Missing Configuration"}).encode())
+                return
+
+            self._set_headers(200)
+            self.wfile.write(json.dumps({
+                "status": "Alive",
+                "backend": "Python Serverless",
+                "react_version_target": "19.2.1"
+            }).encode())
+        else:
+            self._set_headers(404)
 
     def do_POST(self):
         try:
@@ -690,7 +715,9 @@ class handler(BaseHTTPRequestHandler):
                 for r, ds, fs in os.walk(cwd):
                     ds[:] = [x for x in ds if x not in ign]
                     lvl = r.replace(cwd, '').count(os.sep)
-                    if lvl > 3: continue
+                    if lvl > 3:
+                        ds[:] = []
+                        continue
                     tr.append(f"{'  '*lvl}📂 {os.path.basename(r)}/")
                     for f in fs:
                         if len(tr)>300: break
