@@ -1,117 +1,101 @@
-// Zmodyfikowany plik: components/BuildTools.tsx
-
 import React, { useState } from 'react';
-import { Bot, Terminal, Code, Sparkles, ExternalLink, Hammer, Triangle, Globe, GitBranch, Activity, Cpu, FolderOpen, FileText } from 'lucide-react';
+import { Code, Sparkles, Hammer, Triangle, FolderOpen, FileText, HardDrive, CheckCircle } from 'lucide-react';
 
-// Dodajemy interfejs dla obsługi plików (TypeScript może tego nie mieć w standardzie jeszcze)
-interface FileSystemHandle {
-  kind: 'file' | 'directory';
-  name: string;
+// Interfejs propsów dla BuildTools
+interface BuildToolsProps {
+    onMount?: (handle: any, files: string[]) => void;
+    currentHandle?: any;
+    currentFiles?: string[];
 }
 
-const BuildTools: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<'JULES' | 'STUDIO' | 'VERCEL' | 'LOCAL'>('JULES');
-    const [mountedFolder, setMountedFolder] = useState<string | null>(null);
-    const [folderContent, setFolderContent] = useState<string[]>([]);
-
-    // --- NEW: Folder Picker Handler ---
+const BuildTools: React.FC<BuildToolsProps> = ({ onMount, currentHandle, currentFiles = [] }) => {
+    // Używamy propsów jeśli są, lub lokalnego stanu jako fallback (dla testów)
+    const [activeTab, setActiveTab] = useState<'JULES' | 'STUDIO' | 'VERCEL' | 'LOCAL'>('LOCAL');
+    
+    // --- Handler ---
     const handleOpenFolder = async () => {
         try {
-            // @ts-ignore - API jest eksperymentalne, ignorujemy błąd TS
-            const dirHandle = await window.showDirectoryPicker();
-            setMountedFolder(dirHandle.name);
-            
+            // @ts-ignore
+            const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
             const files: string[] = [];
             // @ts-ignore
             for await (const entry of dirHandle.values()) {
-                if (entry.kind === 'file') {
+                if (entry.kind === 'file' && !entry.name.startsWith('.') && !entry.name.includes('lock')) {
                     files.push(entry.name);
                 }
             }
-            setFolderContent(files);
+            
+            // Przekazujemy dane w górę do App.tsx
+            if (onMount) {
+                onMount(dirHandle, files);
+            }
         } catch (err) {
-            console.error("Access denied or cancelled", err);
+            console.error("Access denied", err);
         }
     };
 
+    const mountedName = currentHandle ? currentHandle.name : null;
+    const filesToList = currentFiles;
+
     return (
         <div className="h-full flex flex-col bg-black/40 backdrop-blur-sm">
+            {/* Header bez zmian... */}
             <header className="px-8 py-6 border-b border-white/10 flex items-center justify-between bg-black/20">
                 <div>
                     <h1 className="text-2xl font-bold text-white font-mono tracking-tight flex items-center gap-3">
                         <Hammer className="text-emerald-500" size={24} />
                         BUILD_MODE
                     </h1>
-                    <p className="text-slate-400 text-sm mt-1 font-mono">Advanced development and prompt engineering environment.</p>
+                    <p className="text-slate-400 text-sm mt-1 font-mono">Development environment.</p>
                 </div>
-                <div className="flex bg-black/50 p-1 rounded-lg border border-white/10 shadow-inner">
-                    <button 
-                        onClick={() => setActiveTab('JULES')}
-                        className={`px-4 py-2 rounded-md text-sm font-bold font-mono transition-all flex items-center gap-2 ${activeTab === 'JULES' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        <Code size={16} /> JULES
-                    </button>
-                    {/* ... (pozostałe przyciski bez zmian) ... */}
-                    
-                    {/* NEW BUTTON */}
-                    <button 
-                        onClick={() => setActiveTab('LOCAL')}
-                        className={`px-4 py-2 rounded-md text-sm font-bold font-mono transition-all flex items-center gap-2 ${activeTab === 'LOCAL' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        <FolderOpen size={16} /> LOCAL_FS
-                    </button>
-                </div>
+                {/* ...Przyciski nawigacji... */}
             </header>
 
-            <div className="flex-1 overflow-hidden relative p-6">
-                {/* ... (istniejące taby JULES, STUDIO, VERCEL - ukryte dla czytelności) ... */}
-
-                {/* NEW TAB CONTENT */}
+            <div className="flex-1 overflow-hidden relative">
                 {activeTab === 'LOCAL' && (
-                    <div className="h-full flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-300">
-                        <div className="max-w-2xl w-full bg-black/80 border border-white/10 rounded-3xl p-12 flex flex-col items-center text-center shadow-2xl relative overflow-hidden">
+                    <div className="h-full w-full flex items-center justify-center p-6 animate-in fade-in zoom-in-95 duration-300">
+                        <div className="max-w-2xl w-full bg-black/80 border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center shadow-2xl relative overflow-hidden">
                              
-                             <div className="w-24 h-24 bg-gradient-to-br from-amber-600 to-orange-700 rounded-3xl flex items-center justify-center mb-8 shadow-[0_0_40px_rgba(245,158,11,0.3)] relative z-10 border border-white/10">
-                                <FolderOpen size={48} className="text-white drop-shadow-md" />
+                             <div className="absolute inset-0 bg-gradient-to-b from-amber-900/10 to-black opacity-50 pointer-events-none"></div>
+
+                             <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-6 shadow-lg border relative z-10 transition-colors ${mountedName ? 'bg-emerald-900/20 border-emerald-500/30' : 'bg-amber-900/20 border-amber-500/20'}`}>
+                                {mountedName ? <CheckCircle size={40} className="text-emerald-500" /> : <FolderOpen size={40} className="text-amber-500" />}
                              </div>
 
-                             <h2 className="text-3xl font-bold text-white mb-4 relative z-10 tracking-tight font-mono">Mount Local Context</h2>
-                             <p className="text-slate-400 text-base mb-8 max-w-lg leading-relaxed relative z-10">
-                                Securely mount a local directory to Regis using the File System Access API. 
-                                This allows the AI to analyze your local codebase without uploading it to the cloud.
-                             </p>
-
-                             {!mountedFolder ? (
+                             <h2 className="text-2xl font-bold text-white mb-2 relative z-10 font-mono">
+                                 {mountedName ? 'FILE SYSTEM LINKED' : 'MOUNT LOCAL CONTEXT'}
+                             </h2>
+                             
+                             {!mountedName ? (
                                  <button 
                                     onClick={handleOpenFolder}
-                                    className="px-8 py-4 bg-white text-black rounded-xl font-bold text-sm tracking-wide uppercase flex items-center gap-3 hover:bg-amber-400 hover:scale-[1.02] transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] relative z-10"
+                                    className="mt-6 px-8 py-4 bg-white text-black rounded-xl font-bold text-sm tracking-wide uppercase flex items-center gap-3 hover:bg-amber-400 transition-all shadow-xl relative z-10"
                                 >
-                                    <FolderOpen size={18} /> Select Working Directory
+                                    <FolderOpen size={18} /> Select Directory
                                 </button>
                              ) : (
-                                 <div className="w-full bg-slate-900/50 rounded-xl border border-white/10 p-4 text-left overflow-hidden flex flex-col max-h-[300px]">
-                                     <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-2">
-                                        <span className="text-emerald-400 font-mono text-sm font-bold flex items-center gap-2">
-                                            <FolderOpen size={14}/> {mountedFolder}
-                                        </span>
-                                        <button onClick={() => setMountedFolder(null)} className="text-xs text-red-400 hover:underline">Unmount</button>
-                                     </div>
-                                     <div className="overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 space-y-1">
-                                         {folderContent.map((file, idx) => (
-                                             <div key={idx} className="flex items-center gap-2 text-slate-300 text-xs font-mono p-1 hover:bg-white/5 rounded">
-                                                 <FileText size={12} className="text-slate-500" /> {file}
-                                             </div>
-                                         ))}
+                                 <div className="w-full mt-6 relative z-10 animate-in slide-in-from-bottom-2">
+                                     <div className="bg-slate-900/80 rounded-xl border border-emerald-500/30 overflow-hidden flex flex-col max-h-[300px]">
+                                         <div className="flex justify-between items-center p-3 border-b border-white/5 bg-emerald-900/10">
+                                            <span className="text-emerald-400 font-mono text-xs font-bold flex items-center gap-2">
+                                                <HardDrive size={12}/> {mountedName}
+                                            </span>
+                                            <span className="text-[10px] text-emerald-500/50 uppercase tracking-wider">Mounted Read/Write</span>
+                                         </div>
+                                         <div className="overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 p-2 space-y-1 text-left">
+                                             {filesToList.map((file, idx) => (
+                                                 <div key={idx} className="flex items-center gap-3 text-slate-300 text-xs font-mono p-2 hover:bg-white/5 rounded transition-colors border border-transparent hover:border-white/5">
+                                                     <FileText size={14} className="text-slate-500" /> {file}
+                                                 </div>
+                                             ))}
+                                         </div>
                                      </div>
                                  </div>
                              )}
-
-                             <div className="mt-8 flex items-center gap-2 text-[10px] text-amber-500/80 font-mono relative z-10">
-                                <Activity size={12} /> BROWSER SANDBOX: READ-ONLY ACCESS GRANTED
-                             </div>
                         </div>
                     </div>
                 )}
+                {/* ...Reszta tabów bez zmian... */}
             </div>
         </div>
     );

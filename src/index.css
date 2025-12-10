@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #000000;
+  --glass: rgba(20, 20, 20, 0.85);
+  --neon: #00ff9d;
+}
+
+html {
+  font-size: 170%;
+  height: 100%; /* WAŻNE */
+}
+
+@media (max-width: 1024px) {
+  html {
+    font-size: 100%;
+  }
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: #eee;
+  font-family: 'JetBrains Mono', monospace;
+  overflow: hidden;
+  height: 100%; /* WAŻNE */
+}
+
+#root {
+  height: 100%; /* NAPRAWA BIAŁEGO EKRANU - React musi mieć wysokość */
+  width: 100%;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #0f172a; }
+::-webkit-scrollbar-thumb { background: #10b981; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #34d399; }
