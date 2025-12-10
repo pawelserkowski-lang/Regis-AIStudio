@@ -55,7 +55,7 @@ class handler(BaseHTTPRequestHandler):
                 tr = []
                 for r, ds, fs in os.walk(cwd):
                     ds[:] = [x for x in ds if x not in ign]
-                    lvl = r.replace(cwd, '').count(os.sep)
+                    lvl = 0 if r == cwd else os.path.relpath(r, cwd).count(os.sep) + 1
                     if lvl > 3:
                         ds[:] = []
                         continue
