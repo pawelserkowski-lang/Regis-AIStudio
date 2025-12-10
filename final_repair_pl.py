@@ -46,6 +46,9 @@ FILES["package.json"] = r'''{
     "@testing-library/react": "^16.1.0",
     "@testing-library/jest-dom": "^6.4.2",
     "jsdom": "^25.0.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/node": "^22.0.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.18",
     "postcss": "^8.4.35",
@@ -480,7 +483,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, lang, setL
 export default Sidebar;'''
 
 FILES["src/components/ChatArea.tsx"] = r'''import React, { useRef, useEffect, useState } from 'react';
-import { Bot, User, BookmarkPlus, Loader2, Paperclip, Image as ImageIcon, Video, Sparkles, Radio, Search, ScanEye, ChevronDown } from 'lucide-react';
+import { Bot, User, BookmarkPlus, Loader2, Paperclip, Image as ImageIcon, Video, Sparkles, Radio, Search, ScanEye, ChevronDown, CornerDownLeft } from 'lucide-react';
 import { Message, Sender, Attachment, AIModelId } from '../types';
 import { sendMessageStream, getChatModel } from '../services/geminiService';
 import FileListView from './FileListView';

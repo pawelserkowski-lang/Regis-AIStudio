@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Bot, User, BookmarkPlus, Loader2, Paperclip, Image as ImageIcon, Video, Sparkles, Radio, Search, ScanEye, ChevronDown } from 'lucide-react';
+import { Bot, User, BookmarkPlus, Loader2, Paperclip, Image as ImageIcon, Video, Sparkles, Radio, Search, ScanEye, ChevronDown, CornerDownLeft } from 'lucide-react';
 import { Message, Sender, Attachment, AIModelId } from '../types';
 import { sendMessageStream, getChatModel } from '../services/geminiService';
 import FileListView from './FileListView';
