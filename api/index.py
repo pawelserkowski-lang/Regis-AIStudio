@@ -24,6 +24,16 @@ def translate_cmd(cmd):
     return cmd
 
 class handler(BaseHTTPRequestHandler):
+    # --- FIX START: NADPISANIE DOMYŚLNEGO LOGOWANIA ---
+    def log_message(self, format, *args):
+        # Domyślna implementacja pisze do sys.stderr, który jest None w trybie detached.
+        # Przekierowujemy to do naszego pliku lub ignorujemy.
+        try:
+            log(f"REQ: {self.client_address[0]} - {format%args}")
+        except:
+            pass
+    # --- FIX END ---
+
     def _send_json(self, code, data):
         try:
             self.send_response(code)
@@ -44,7 +54,7 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         log(f"GET {self.path}")
         if self.path == '/api':
-            self._send_json(200, {"status": "Alive", "version": "v17.0"})
+            self._send_json(200, {"status": "Alive", "version": "v17.1 (Patched)"})
         elif self.path == '/api/config':
             key = os.environ.get('GOOGLE_API_KEY', 'MISSING_KEY')
             self._send_json(200, {"envKey": key})

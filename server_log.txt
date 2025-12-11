@@ -101,3 +101,15 @@
 [18:38:36] SEND ERROR: 'NoneType' object has no attribute 'write'
 [18:38:36] GET /api/config
 [18:38:36] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:44:43] GET /api/config
+[18:44:43] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[18:44:43] GET /api/config
+[18:44:43] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[18:44:43] GET /api/config
+[18:44:43] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[18:48:27] GET /api/config
+[18:48:27] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[18:48:27] GET /api/config
+[18:48:27] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[18:48:27] GET /api/config
+[18:48:27] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -

@@ -1,19 +1,9 @@
 import os
-import sys
 
-# ==============================================================================
-# REGIS PHOENIX v17.0: ZOMBIE SLAYER & ROBUST API
-# - Generates 'KILL_AND_RUN.bat' for reliable process termination
-# - Updates API with "Armored" Error Handling (no more JSON crash)
-# - Force enables CORS and Logging
-# ==============================================================================
+print(">>> APLIKOWANIE ŁATKI NA api/index.py (FIX DLA DETACHED MODE) <<<")
 
-print(">>> INICJOWANIE PROTOKOŁU PHOENIX v17.0 (HARD RESET) <<<")
-
-FILES = {}
-
-# --- 1. ROBUST API (PANZER BACKEND) ---
-FILES["api/index.py"] = r'''from http.server import BaseHTTPRequestHandler
+# Nowa zawartość api/index.py z dodaną metodą log_message, która nie crashuje serwera
+NEW_CONTENT = r'''from http.server import BaseHTTPRequestHandler
 import os, json, subprocess, platform, datetime, sys
 
 # SETUP LOGGING
@@ -39,6 +29,16 @@ def translate_cmd(cmd):
     return cmd
 
 class handler(BaseHTTPRequestHandler):
+    # --- FIX START: NADPISANIE DOMYŚLNEGO LOGOWANIA ---
+    def log_message(self, format, *args):
+        # Domyślna implementacja pisze do sys.stderr, który jest None w trybie detached.
+        # Przekierowujemy to do naszego pliku lub ignorujemy.
+        try:
+            log(f"REQ: {self.client_address[0]} - {format%args}")
+        except:
+            pass
+    # --- FIX END ---
+
     def _send_json(self, code, data):
         try:
             self.send_response(code)
@@ -59,7 +59,7 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         log(f"GET {self.path}")
         if self.path == '/api':
-            self._send_json(200, {"status": "Alive", "version": "v17.0"})
+            self._send_json(200, {"status": "Alive", "version": "v17.1 (Patched)"})
         elif self.path == '/api/config':
             key = os.environ.get('GOOGLE_API_KEY', 'MISSING_KEY')
             self._send_json(200, {"envKey": key})
@@ -147,38 +147,8 @@ class handler(BaseHTTPRequestHandler):
             self._send_json(500, {"error": str(e)})
 '''
 
-# --- 2. KILL_AND_RUN.BAT (THE EXORCIST) ---
-FILES["KILL_AND_RUN.bat"] = r'''@echo off
-color 0A
-echo ===================================================
-echo      REGIS PHOENIX ZOMBIE SLAYER PROTOCOL
-echo ===================================================
-echo.
-echo [1] KILLING OLD PROCESSES...
-taskkill /F /IM python.exe /T 2>nul
-taskkill /F /IM node.exe /T 2>nul
-echo.
-echo [2] PROCESSES TERMINATED. STARTING FRESH...
-echo.
-start /min cmd /k python api/local_server.py
-start /min cmd /c npm run dev
-echo [3] SYSTEM STARTED.
-echo.
-echo Waiting 5 seconds for backend to stabilize...
-timeout /t 5
-start http://localhost:3000
-echo.
-echo DONE. YOU CAN CLOSE THIS WINDOW.
-'''
+with open("api/index.py", "w", encoding="utf-8") as f:
+    f.write(NEW_CONTENT)
 
-# --- ZAPIS ---
-for name, content in FILES.items():
-    with open(name, 'w', encoding='utf-8') as f:
-        f.write(content.strip())
-    print(f" [CREATED] {name}")
-
-print("\n>>> PATCH v17.0 READY <<<")
-print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-print("!!! DO NOT RUN 'python run.py'                     !!!")
-print("!!! GO TO YOUR FOLDER AND RUN 'KILL_AND_RUN.bat'   !!!")
-print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+print(" [SUKCES] Plik api/index.py został naprawiony.")
+print(" [INFO] Uruchom teraz 'KILL_AND_RUN.bat', aby zrestartować system.")
