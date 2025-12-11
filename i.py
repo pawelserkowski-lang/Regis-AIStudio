@@ -1,4 +1,19 @@
-from http.server import BaseHTTPRequestHandler
+import os
+import sys
+
+# ==============================================================================
+# REGIS PHOENIX v17.0: ZOMBIE SLAYER & ROBUST API
+# - Generates 'KILL_AND_RUN.bat' for reliable process termination
+# - Updates API with "Armored" Error Handling (no more JSON crash)
+# - Force enables CORS and Logging
+# ==============================================================================
+
+print(">>> INICJOWANIE PROTOKOŁU PHOENIX v17.0 (HARD RESET) <<<")
+
+FILES = {}
+
+# --- 1. ROBUST API (PANZER BACKEND) ---
+FILES["api/index.py"] = r'''from http.server import BaseHTTPRequestHandler
 import os, json, subprocess, platform, datetime, sys
 
 # SETUP LOGGING
@@ -130,3 +145,40 @@ class handler(BaseHTTPRequestHandler):
         except Exception as e:
             log(f"CRASH: {e}")
             self._send_json(500, {"error": str(e)})
+'''
+
+# --- 2. KILL_AND_RUN.BAT (THE EXORCIST) ---
+FILES["KILL_AND_RUN.bat"] = r'''@echo off
+color 0A
+echo ===================================================
+echo      REGIS PHOENIX ZOMBIE SLAYER PROTOCOL
+echo ===================================================
+echo.
+echo [1] KILLING OLD PROCESSES...
+taskkill /F /IM python.exe /T 2>nul
+taskkill /F /IM node.exe /T 2>nul
+echo.
+echo [2] PROCESSES TERMINATED. STARTING FRESH...
+echo.
+start /min cmd /k python api/local_server.py
+start /min cmd /c npm run dev
+echo [3] SYSTEM STARTED.
+echo.
+echo Waiting 5 seconds for backend to stabilize...
+timeout /t 5
+start http://localhost:3000
+echo.
+echo DONE. YOU CAN CLOSE THIS WINDOW.
+'''
+
+# --- ZAPIS ---
+for name, content in FILES.items():
+    with open(name, 'w', encoding='utf-8') as f:
+        f.write(content.strip())
+    print(f" [CREATED] {name}")
+
+print("\n>>> PATCH v17.0 READY <<<")
+print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+print("!!! DO NOT RUN 'python run.py'                     !!!")
+print("!!! GO TO YOUR FOLDER AND RUN 'KILL_AND_RUN.bat'   !!!")
+print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")

@@ -4,8 +4,6 @@ const Launcher: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center w-full h-full bg-black">
         <div className="relative z-10 flex flex-col items-center animate-in fade-in zoom-in duration-700">
-            {/* LOGO - CZYSTE, BEZ ŻADNEGO KONTENERA */}
-            {/* Używamy mix-blend-screen aby czarne tło PNG stało się przezroczyste */}
             <img 
                 src="https://pawelserkowski.pl/logo.webp" 
                 alt="Logo" 

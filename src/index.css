@@ -4,19 +4,14 @@
 
 :root {
   --bg: #000000;
-  --glass: rgba(20, 20, 20, 0.85);
+  --glass: rgba(20, 20, 20, 0.95);
   --neon: #00ff9d;
 }
 
 html {
-  font-size: 170%;
-  height: 100%; /* WAŻNE */
-}
-
-@media (max-width: 1024px) {
-  html {
-    font-size: 100%;
-  }
+  /* Zwiększona skala interfejsu (+30% względem standardu) */
+  font-size: 130%; 
+  height: 100%;
 }
 
 body {
@@ -25,15 +20,16 @@ body {
   color: #eee;
   font-family: 'JetBrains Mono', monospace;
   overflow: hidden;
-  height: 100%; /* WAŻNE */
+  height: 100%;
 }
 
 #root {
-  height: 100%; /* NAPRAWA BIAŁEGO EKRANU - React musi mieć wysokość */
+  height: 100%;
   width: 100%;
 }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
+/* Custom Scrollbar (Większy dla wygody) */
+::-webkit-scrollbar { width: 12px; height: 12px; }
 ::-webkit-scrollbar-track { background: #0f172a; }
-::-webkit-scrollbar-thumb { background: #10b981; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #10b981; border-radius: 6px; }
 ::-webkit-scrollbar-thumb:hover { background: #34d399; }
