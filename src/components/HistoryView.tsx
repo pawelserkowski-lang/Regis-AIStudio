@@ -1,26 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, Trash2, MessageSquare, Play, Calendar } from 'lucide-react';
+{
+type: "file_update",
+fileName: "pawelserkowski-lang/regis-aistudio/Regis-AIStudio-09a00b723a43a269a027e324ca158d919fb1dbcd/src/components/HistoryView.tsx",
+fileContent: `import React from 'react';
+import { Clock, Trash2, Play, Calendar } from 'lucide-react';
 import { ChatSession, Message } from '../types';
 
 interface Props { 
     lang: 'PL'|'EN'; 
     onLoadSession: (msgs: Message[]) => void; 
+    sessions: ChatSession[];
+    setSessions: React.Dispatch<React.SetStateAction<ChatSession[]>>;
 }
 
-const HistoryView: React.FC<Props> = ({ lang, onLoadSession }) => {
-    const [sessions, setSessions] = useState<ChatSession[]>([]);
-
-    useEffect(() => {
-        try {
-            const saved = JSON.parse(localStorage.getItem('regis_sessions') || '[]');
-            setSessions(saved);
-        } catch { setSessions([]); }
-    }, []);
-
+const HistoryView: React.FC<Props> = ({ lang, onLoadSession, sessions, setSessions }) => {
+    
     const deleteSession = (id: string) => {
         const newSessions = sessions.filter(s => s.id !== id);
         setSessions(newSessions);
-        localStorage.setItem('regis_sessions', JSON.stringify(newSessions));
+        // Persistence is handled in App.tsx
     };
 
     const t = lang === 'PL' 
@@ -66,4 +63,5 @@ const HistoryView: React.FC<Props> = ({ lang, onLoadSession }) => {
         </div>
     );
 };
-export default HistoryView;
+export default HistoryView;`
+}
