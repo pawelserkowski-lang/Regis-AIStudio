@@ -9,8 +9,7 @@
 }
 
 html {
-  /* Zwiększona skala interfejsu (+30% względem standardu) */
-  font-size: 130%; 
+  font-size: 100%; 
   height: 100%;
 }
 

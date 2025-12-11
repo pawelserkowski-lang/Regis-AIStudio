@@ -42,19 +42,9 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        # Security Check (Enforced by tests)
-        if not os.environ.get('GOOGLE_API_KEY'):
-            self._send_json(500, {"error": "Missing Configuration: GOOGLE_API_KEY"})
-            return
-
         log(f"GET {self.path}")
-        if self.path == '/api' or self.path == '/':
-            self._send_json(200, {
-                "status": "Alive", 
-                "version": "v17.0",
-                "backend": "Python Serverless",
-                "react_version_target": "19.0.0"
-            })
+        if self.path == '/api':
+            self._send_json(200, {"status": "Alive", "version": "v17.0"})
         elif self.path == '/api/config':
             key = os.environ.get('GOOGLE_API_KEY', 'MISSING_KEY')
             self._send_json(200, {"envKey": key})

@@ -16,10 +16,15 @@ const App: React.FC = () => {
   
   const [chatInput, setChatInput] = useState('');
 
-  // STATE
-  const [messages, setMessages] = useState<Message[]>(() => {
-    try { return JSON.parse(localStorage.getItem('regis_messages') || '[]'); } catch { return []; }
-  });
+  // STATE: Zawsze startujemy z nową sesją i opisem z README
+  const [messages, setMessages] = useState<Message[]>([
+      {
+          id: 'init-welcome',
+          sender: Sender.BOT,
+          timestamp: Date.now(),
+          text: `# 🔥 Regis AI Studio (Phoenix Edition)\n\n**Wersja:** 2.0.0 (God Mode Enabled)\n**Silnik:** React 19 + Python Serverless\n\nRegis to zaawansowane środowisko typu SPA, które pozwala modelowi Gemini wykonywać polecenia systemowe na Twoim komputerze.\n\n### 🌟 Co to potrafi?\n* **Tryb Boga (God Mode):** Bezpośredni dostęp do konsoli CMD/Terminala.\n* **Multimodalność:** Obsługa tekstu, audio i obrazów.\n* **Live Mode:** Podgląd aplikacji webowych w czasie rzeczywistym.\n* **Architektura Zero-Build:** Frontend działa bezpośrednio w przeglądarce.`
+      }
+  ]);
 
   const [promptHistory, setPromptHistory] = useState<string[]>(() => {
       try { return JSON.parse(localStorage.getItem('regis_prompt_history') || '[]'); } catch { return []; }
@@ -55,7 +60,9 @@ const App: React.FC = () => {
           const updatedSession: ChatSession = {
               id: sid,
               date: Date.now(),
-              title: messages[0]?.text.substring(0, 40) + "..." || "New Session",
+              title: messages.length > 1 && messages[1].sender === Sender.USER 
+                ? messages[1].text.substring(0, 40) + "..." 
+                : "Nowa Sesja (Regis Start)",
               messages: messages
           };
 

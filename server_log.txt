@@ -32,3 +32,72 @@
 [18:20:45] SEND ERROR: 'NoneType' object has no attribute 'write'
 [18:20:45] GET /api/config
 [18:20:45] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:26:21] GET /api/config
+[18:26:21] GET /api/config
+[18:26:21] GET /api/config
+[18:38:12] GET /api/config
+[18:38:12] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:12] GET /api/config
+[18:38:12] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:12] GET /api/config
+[18:38:12] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:15] GET /api/config
+[18:38:15] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:24] GET /api/config
+[18:38:24] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:24] GET /api/config
+[18:38:24] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:31] GET /api/config
+[18:38:31] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:31] GET /api/config
+[18:38:31] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:31] GET /api/config
+[18:38:31] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:31] GET /api/config
+[18:38:31] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:31] GET /api/config
+[18:38:31] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:31] GET /api/config
+[18:38:31] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:32] GET /api/config
+[18:38:32] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:32] GET /api/config
+[18:38:32] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:32] GET /api/config
+[18:38:32] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:32] GET /api/config
+[18:38:33] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:33] GET /api/config
+[18:38:33] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:33] GET /api/config
+[18:38:33] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:33] GET /api/config
+[18:38:33] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:33] GET /api/config
+[18:38:33] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:34] GET /api/config
+[18:38:34] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:34] GET /api/config
+[18:38:34] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:35] GET /api/config
+[18:38:35] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:35] GET /api/config
+[18:38:35] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:35] GET /api/config
+[18:38:35] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:35] GET /api/config
+[18:38:35] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:35] GET /api/config
+[18:38:35] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:36] GET /api/config
+[18:38:36] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:36] GET /api/config
+[18:38:36] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:36] GET /api/config
+[18:38:36] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:36] GET /api/config
+[18:38:36] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:36] GET /api/config
+[18:38:36] SEND ERROR: 'NoneType' object has no attribute 'write'
+[18:38:36] GET /api/config
+[18:38:36] SEND ERROR: 'NoneType' object has no attribute 'write'
