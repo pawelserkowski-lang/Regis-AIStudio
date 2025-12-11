@@ -113,3 +113,30 @@
 [18:48:27] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
 [18:48:27] GET /api/config
 [18:48:27] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[18:53:34] GET /api/config
+[18:53:34] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[18:53:34] GET /api/config
+[18:53:34] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[18:53:34] GET /api/config
+[18:53:34] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:20:55] GET /api/config
+[20:20:55] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:20:55] GET /api/config
+[20:20:55] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:20:55] GET /api/config
+[20:20:55] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:23:40] GET /api/config
+[20:23:40] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:23:40] GET /api/config
+[20:23:40] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:23:40] GET /api/config
+[20:23:40] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:24:18] GET /api/config
+[20:24:18] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:24:18] GET /api/config
+[20:24:18] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:24:18] GET /api/config
+[20:24:18] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:24:28] POST shutdown in C:\Users\BIURODOM\Documents\GitHub\Regis-AIStudio
+[20:24:28] REQ: 127.0.0.1 - "POST /api HTTP/1.1" 200 -
+[20:24:28] SHUTDOWN COMMAND RECEIVED

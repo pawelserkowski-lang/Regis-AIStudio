@@ -18,7 +18,7 @@ def run_server():
     if not os.environ.get('GOOGLE_API_KEY'):
         print("[WARN] GOOGLE_API_KEY is not set in environment variables.")
 
-    server = HTTPServer(('localhost', port), handler)
+    server = HTTPServer(('127.0.0.1', port), handler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
