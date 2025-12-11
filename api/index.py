@@ -1,7 +1,4 @@
-{
-type: "file_update",
-fileName: "pawelserkowski-lang/regis-aistudio/Regis-AIStudio-09a00b723a43a269a027e324ca158d919fb1dbcd/api/index.py",
-fileContent: `from http.server import BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler
 import os, json, subprocess, platform, datetime, sys
 
 # SETUP LOGGING
@@ -10,7 +7,7 @@ def log(msg):
     try:
         with open(LOG_FILE, "a", encoding="utf-8") as f:
             ts = datetime.datetime.now().strftime("%H:%M:%S")
-            f.write(f"[{ts}] {msg}\\n")
+            f.write(f"[{ts}] {msg}\n")
     except: pass
 
 def translate_cmd(cmd):
@@ -142,5 +139,4 @@ class handler(BaseHTTPRequestHandler):
 
         except Exception as e:
             log(f"CRASH: {e}")
-            self._send_json(500, {"error": str(e)})`
-}
+            self._send_json(500, {"error": str(e)})
