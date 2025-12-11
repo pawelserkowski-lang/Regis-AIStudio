@@ -1,7 +1,4 @@
-{
-type: "file_update",
-fileName: "pawelserkowski-lang/regis-aistudio/Regis-AIStudio-09a00b723a43a269a027e324ca158d919fb1dbcd/src/components/ChatArea.tsx",
-fileContent: `import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Bot, User, CornerDownLeft, FolderOpen, Power, HelpCircle, FileText, Folder, Terminal, Paperclip, X, UploadCloud, Sparkles, LogOut, RefreshCw, Archive, ArrowUpLeft, Lightbulb } from 'lucide-react';
 import { Message, Sender, Attachment } from '../types';
 import { sendMessageStream, executeSystemAction, improvePrompt } from '../services/geminiService';
@@ -57,7 +54,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
   useEffect(() => {
       const lastMsg = messages[messages.length - 1];
       if (lastMsg && lastMsg.sender === Sender.BOT && !lastMsg.isStreaming && !isLoading) {
-          const suggestionMatch = lastMsg.text.match(/\\\`\\\`\\\`json:SUGGESTIONS\\s*([\\s\\S]*?)\\s*\\\`\\\`\\\`/);
+          const suggestionMatch = lastMsg.text.match(/```json:SUGGESTIONS\s*([\s\S]*?)\s*```/);
           if (suggestionMatch) {
               try {
                   const suggs = JSON.parse(suggestionMatch[1]);
@@ -68,7 +65,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
       }
   }, [messages, isLoading, onAutoCurate]);
 
-  const renderMessageText = (text: string) => text.replace(/\\\`\\\`\\\`json:SUGGESTIONS[\\s\\S]*?\\\`\\\`\\\`/, "").trim();
+  const renderMessageText = (text: string) => text.replace(/```json:SUGGESTIONS[\s\S]*?```/, "").trim();
 
   const fetchFiles = async () => {
       try {
@@ -80,8 +77,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
 
   const handleNavigate = (folderName: string) => {
       let newPath = cwd;
-      if (folderName === "..") { newPath = \`\${cwd}/..\`; } 
-      else { newPath = cwd === '.' ? folderName : \`\${cwd}/\${folderName}\`; }
+      if (folderName === "..") { newPath = `${cwd}/..`; } 
+      else { newPath = cwd === '.' ? folderName : `${cwd}/${folderName}`; }
       setCwd(newPath);
   };
 
@@ -124,20 +121,20 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
   const handleCommand = async (cmdText: string) => {
     const command = cmdText.replace('/cmd', '').trim();
     if (!command) return;
-    addToHistory(\`/cmd \${command}\`);
+    addToHistory(`/cmd ${command}`);
     const cmdMsgId = Date.now().toString();
-    setMessages(prev => [...prev, { id: cmdMsgId, text: \`/cmd \${command}\`, sender: Sender.USER, timestamp: Date.now() }]);
+    setMessages(prev => [...prev, { id: cmdMsgId, text: `/cmd ${command}`, sender: Sender.USER, timestamp: Date.now() }]);
     setInputValue('');
     setDynamicSuggestions([]);
     setIsLoading(true);
     try {
         const res = await executeSystemAction('command', { command, cwd });
         const output = res.stdout || res.stderr || (res.code === 0 ? "Done" : "Error");
-        const header = res.cmd_executed && res.cmd_executed !== command ? \`[CMD] ('\${res.cmd_executed}'):\` : \`[CMD]:\`;
-        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: \`\${header}\\n\${output}\`, sender: Sender.BOT, timestamp: Date.now() }]);
+        const header = res.cmd_executed && res.cmd_executed !== command ? `[CMD] ('${res.cmd_executed}'):` : `[CMD]:`;
+        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: `${header}\n${output}`, sender: Sender.BOT, timestamp: Date.now() }]);
         fetchFiles();
     } catch (e: any) {
-        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: \`Error: \${e.message}\`, sender: Sender.BOT, timestamp: Date.now() }]);
+        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: `Error: ${e.message}`, sender: Sender.BOT, timestamp: Date.now() }]);
     } finally { setIsLoading(false); }
   };
 
@@ -147,7 +144,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
     addToHistory(textToSend);
     if (textToSend.trim().startsWith('/cmd') || textToSend.trim().startsWith('ls') || textToSend.trim().startsWith('dir')) {
         let cmd = textToSend;
-        if(!cmd.startsWith('/cmd')) cmd = \`/cmd \${cmd}\`;
+        if(!cmd.startsWith('/cmd')) cmd = `/cmd ${cmd}`;
         await handleCommand(cmd); return; 
     }
     const userMessage: Message = { id: Date.now().toString(), text: textToSend, sender: Sender.USER, timestamp: Date.now(), attachments: [...attachments] };
@@ -159,7 +156,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
             setMessages(prev => prev.map(msg => msg.id === botMessageId ? { ...msg, text: msg.text + chunk } : msg));
         });
     } catch (error: any) {
-        setMessages(prev => prev.map(msg => msg.id === botMessageId ? { ...msg, text: \`Error: \${error.message}\` } : msg));
+        setMessages(prev => prev.map(msg => msg.id === botMessageId ? { ...msg, text: `Error: ${error.message}` } : msg));
     } finally { setIsLoading(false); setMessages(prev => prev.map(msg => msg.id === botMessageId ? { ...msg, isStreaming: false } : msg)); }
   };
 
@@ -196,10 +193,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
             </div>
         </div>
         <div className="flex gap-3 relative">
-            <button onClick={() => setShowHelp(!showHelp)} className={\`p-3 rounded-xl transition-all \${showHelp ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-500 hover:text-emerald-400 hover:bg-white/5'}\`}><HelpCircle size={24} /></button>
+            <button onClick={() => setShowHelp(!showHelp)} className={`p-3 rounded-xl transition-all ${showHelp ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-500 hover:text-emerald-400 hover:bg-white/5'}`}><HelpCircle size={24} /></button>
             {showHelp && (<div className="absolute top-full right-0 mt-4 w-80 bg-slate-900/95 border border-emerald-500/30 p-6 rounded-2xl shadow-2xl z-[60] backdrop-blur-xl animate-in slide-in-from-top-2"><h3 className="text-emerald-400 font-bold mb-3 flex items-center gap-2"><Terminal size={16}/> COMMANDS</h3><ul className="space-y-2 text-sm text-slate-300 font-mono"><li><span className="text-emerald-500">/cmd [x]</span> Execute</li><li><span className="text-emerald-500">ls/dir</span> List</li></ul></div>)}
             <div className="relative">
-                <button onClick={() => setShowPowerMenu(!showPowerMenu)} className={\`p-3 rounded-xl transition-all \${showPowerMenu ? 'bg-red-500/20 text-red-400' : 'text-slate-500 hover:text-red-400 hover:bg-white/5'}\`}><Power size={24} /></button>
+                <button onClick={() => setShowPowerMenu(!showPowerMenu)} className={`p-3 rounded-xl transition-all ${showPowerMenu ? 'bg-red-500/20 text-red-400' : 'text-slate-500 hover:text-red-400 hover:bg-white/5'}`}><Power size={24} /></button>
                 {showPowerMenu && (
                     <div className="absolute top-full right-0 mt-4 w-56 bg-slate-900/95 border border-white/10 rounded-2xl shadow-2xl z-[60] flex flex-col overflow-hidden backdrop-blur-xl animate-in slide-in-from-top-2">
                         <button onClick={onArchive} className="p-4 text-left hover:bg-emerald-500/10 text-slate-300 hover:text-emerald-400 flex items-center gap-3 text-sm font-bold"><Archive size={18}/> {t.archive}</button>
@@ -214,11 +211,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
       <div className="flex-1 flex overflow-hidden relative">
         <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-10 scroll-smooth scrollbar-thin scrollbar-thumb-emerald-900 scrollbar-track-transparent">
             {messages.map((msg) => (
-            <div key={msg.id} className={\`flex \${msg.sender === Sender.USER ? 'justify-end' : 'justify-start'}\`}>
-                <div className={\`flex max-w-[85%] \${msg.sender === Sender.USER ? 'flex-row-reverse' : 'flex-row'} items-start gap-6\`}>
-                <div className={\`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-xl border \${msg.sender === Sender.USER ? 'bg-slate-800 border-slate-600 text-slate-300' : 'bg-emerald-900/40 border-emerald-500/40 text-emerald-400'}\`}>{msg.sender === Sender.USER ? <User size={28} /> : <Bot size={28} />}</div>
+            <div key={msg.id} className={`flex ${msg.sender === Sender.USER ? 'justify-end' : 'justify-start'}`}>
+                <div className={`flex max-w-[85%] ${msg.sender === Sender.USER ? 'flex-row-reverse' : 'flex-row'} items-start gap-6`}>
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-xl border ${msg.sender === Sender.USER ? 'bg-slate-800 border-slate-600 text-slate-300' : 'bg-emerald-900/40 border-emerald-500/40 text-emerald-400'}`}>{msg.sender === Sender.USER ? <User size={28} /> : <Bot size={28} />}</div>
                 <div className="flex flex-col gap-2 min-w-0 w-full">
-                    <div className={\`group relative p-8 rounded-[2rem] shadow-xl backdrop-blur-md \${msg.sender === Sender.USER ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-tr-sm' : 'bg-black/60 text-slate-200 border border-white/10 rounded-tl-sm'}\`}>
+                    <div className={`group relative p-8 rounded-[2rem] shadow-xl backdrop-blur-md ${msg.sender === Sender.USER ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-tr-sm' : 'bg-black/60 text-slate-200 border border-white/10 rounded-tl-sm'}`}>
                         <div className="whitespace-pre-wrap leading-relaxed text-xl font-mono">{renderMessageText(msg.text)}</div>
                         {msg.attachments && msg.attachments.length > 0 && (<div className="flex flex-wrap gap-3 mt-6 pt-6 border-t border-white/10">{msg.attachments.map((att, idx) => (<div key={idx} className="bg-black/30 p-3 rounded-xl text-sm flex items-center gap-3 border border-white/5">{att.type === 'image' && <img src={att.url} className="w-20 h-20 object-cover rounded-lg" />}<span className="opacity-70 text-xs truncate max-w-[120px]">{att.mimeType}</span></div>))}</div>)}
                     </div>
@@ -235,7 +232,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
                 <h3 className="text-sm font-bold text-emerald-500 mb-6 uppercase tracking-widest border-b border-white/10 pb-3 flex items-center gap-2"><FolderOpen size={18}/> {t.files}</h3>
                 <div className="space-y-1">
                     {files.map((f, i) => (
-                        <div key={i} className={\`flex items-center gap-3 text-sm p-3 rounded-xl cursor-pointer transition-all \${f.name === '..' ? 'bg-emerald-900/20 border border-emerald-900/50 text-emerald-400 font-bold mb-2' : f.is_dir ? 'hover:bg-white/10 text-slate-200' : 'hover:bg-white/5 text-slate-400'} group\`} onClick={() => { if (f.name === "..") handleNavigate(".."); else if (f.is_dir) handleNavigate(f.name); else setInputValue(prev => prev + \` "\${f.name}"\`); }}>
+                        <div key={i} className={`flex items-center gap-3 text-sm p-3 rounded-xl cursor-pointer transition-all ${f.name === '..' ? 'bg-emerald-900/20 border border-emerald-900/50 text-emerald-400 font-bold mb-2' : f.is_dir ? 'hover:bg-white/10 text-slate-200' : 'hover:bg-white/5 text-slate-400'} group`} onClick={() => { if (f.name === "..") handleNavigate(".."); else if (f.is_dir) handleNavigate(f.name); else setInputValue(prev => prev + ` "${f.name}"`); }}>
                             {f.name === ".." ? <ArrowUpLeft size={18} /> : f.is_dir ? <Folder size={18} className="text-yellow-500 group-hover:text-yellow-400" /> : <FileText size={18} />}
                             <span className="truncate flex-1">{f.name === ".." ? "[..] UP LEVEL" : f.name}</span>
                         </div>
@@ -274,9 +271,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
         
         <div className="w-full relative shadow-2xl shadow-emerald-900/10">
             <div className="flex items-end gap-4 bg-black/80 backdrop-blur-2xl p-5 rounded-[2rem] border border-white/10 focus-within:border-emerald-500/50 transition-all">
-                <button onClick={() => setShowCwdInput(!showCwdInput)} className={\`p-4 rounded-2xl transition-all \${showCwdInput ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/5 text-slate-400'}\`} title="Browse Files"><FolderOpen size={32} /></button>
+                <button onClick={() => setShowCwdInput(!showCwdInput)} className={`p-4 rounded-2xl transition-all ${showCwdInput ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/5 text-slate-400'}`} title="Browse Files"><FolderOpen size={32} /></button>
                 <label className="p-4 hover:bg-white/5 text-slate-400 rounded-2xl cursor-pointer transition-colors"><Paperclip size={32} /><input type="file" multiple className="hidden" onChange={(e) => { if (e.target.files) { Array.from(e.target.files).forEach(file => { const reader = new FileReader(); reader.onload = () => { if(typeof reader.result === 'string') { setAttachments(prev => [...prev, { type: 'image', url: reader.result as string, mimeType: file.type, data: (reader.result as string).split(',')[1] }]); } }; reader.readAsDataURL(file); }); } }} /></label>
-                <button onClick={handleImprove} disabled={isImproving || !inputValue.trim()} className={\`p-4 rounded-2xl transition-all \${isImproving ? 'text-emerald-400 animate-pulse' : 'text-slate-400 hover:text-emerald-400 hover:bg-white/5'}\`} title="Improve Prompt (AI)"><Sparkles size={32} /></button>
+                <button onClick={handleImprove} disabled={isImproving || !inputValue.trim()} className={`p-4 rounded-2xl transition-all ${isImproving ? 'text-emerald-400 animate-pulse' : 'text-slate-400 hover:text-emerald-400 hover:bg-white/5'}`} title="Improve Prompt (AI)"><Sparkles size={32} /></button>
                 <input value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} placeholder={isImproving ? t.improving : t.typeMsg} disabled={isImproving} className="flex-1 bg-transparent border-none focus:ring-0 text-2xl text-slate-100 placeholder:text-slate-600 px-4 py-3 font-mono h-auto min-h-[4rem]" />
                 <button onClick={() => handleSend()} disabled={isLoading || isImproving} className="p-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-[1.5rem] transition-all shadow-lg hover:shadow-emerald-500/20"><CornerDownLeft size={32} /></button>
             </div>
@@ -285,5 +282,4 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
     </div>
   );
 };
-export default ChatArea;`
-}
+export default ChatArea;
