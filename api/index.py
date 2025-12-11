@@ -1,7 +1,6 @@
 from http.server import BaseHTTPRequestHandler
-import os, json, subprocess, platform, datetime, sys
+import os, json, subprocess, platform, datetime, sys, traceback
 
-# SETUP LOGGING
 LOG_FILE = "server_log.txt"
 def log(msg):
     try:
@@ -10,35 +9,23 @@ def log(msg):
             f.write(f"[{ts}] {msg}\n")
     except: pass
 
-def translate_cmd(cmd):
-    if platform.system() != "Windows": return cmd
-    c = cmd.lower().strip()
-    if c == "ls": return "dir"
-    if c.startswith("ls "): return c.replace("ls ", "dir ", 1)
-    if c.startswith("rm "): return c.replace("rm ", "del ")
-    if c.startswith("cp "): return c.replace("cp ", "copy ")
-    if c.startswith("mv "): return c.replace("mv ", "move ")
-    if c == "clear": return "cls"
-    if c == "pwd": return "cd"
-    if "python3" in c: return cmd.replace("python3", "python")
-    return cmd
-
 class handler(BaseHTTPRequestHandler):
-    # --- FIX START: NADPISANIE DOMYŚLNEGO LOGOWANIA ---
+    # Wyłączamy standardowe logowanie do stderr (zapobiega crashom bez konsoli)
     def log_message(self, format, *args):
-        # Domyślna implementacja pisze do sys.stderr, który jest None w trybie detached.
-        # Przekierowujemy to do naszego pliku lub ignorujemy.
         try:
             log(f"REQ: {self.client_address[0]} - {format%args}")
-        except:
-            pass
-    # --- FIX END ---
+        except: pass
+
+    def _send_cors(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
 
     def _send_json(self, code, data):
         try:
             self.send_response(code)
             self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
+            self._send_cors()
             self.end_headers()
             self.wfile.write(json.dumps(data).encode('utf-8'))
         except Exception as e:
@@ -46,15 +33,13 @@ class handler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self):
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self._send_cors()
         self.end_headers()
 
     def do_GET(self):
         log(f"GET {self.path}")
         if self.path == '/api':
-            self._send_json(200, {"status": "Alive", "version": "v17.1 (Patched)"})
+            self._send_json(200, {"status": "Alive", "mode": "Direct Link"})
         elif self.path == '/api/config':
             key = os.environ.get('GOOGLE_API_KEY', 'MISSING_KEY')
             self._send_json(200, {"envKey": key})
@@ -64,78 +49,55 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             length = int(self.headers.get('Content-Length', 0))
-            if length == 0:
-                return self._send_json(400, {"error": "Empty body"})
-            
             body = self.rfile.read(length).decode('utf-8')
             d = json.loads(body)
-            act = d.get('action', 'unknown')
+            act = d.get('action', '')
             cwd = d.get('cwd', os.getcwd())
             
-            if not os.path.exists(cwd): cwd = os.getcwd()
-            log(f"POST {act} in {cwd}")
+            log(f"POST {act}")
 
             if act == 'command':
-                raw = d.get('command', '')
-                cmd = translate_cmd(raw)
-                
-                si = None
+                cmd = d.get('command', '')
                 if platform.system() == "Windows":
-                    si = subprocess.STARTUPINFO()
-                    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                    si.wShowWindow = subprocess.SW_HIDE
-
-                # Run command
-                r = subprocess.run(
-                    cmd, 
-                    shell=True, 
-                    capture_output=True, 
-                    text=True, 
-                    cwd=cwd, 
-                    encoding='utf-8', 
-                    errors='replace',
-                    startupinfo=si
-                )
+                    if cmd.strip() == "ls": cmd = "dir"
+                    if cmd.startswith("ls "): cmd = cmd.replace("ls ", "dir ", 1)
                 
-                self._send_json(200, {
-                    "stdout": r.stdout, 
-                    "stderr": r.stderr, 
-                    "code": r.returncode,
-                    "cmd_executed": cmd
-                })
+                si = subprocess.STARTUPINFO()
+                si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                si.wShowWindow = subprocess.SW_HIDE
+
+                r = subprocess.run(
+                    cmd, shell=True, capture_output=True, text=True, 
+                    cwd=cwd, encoding='utf-8', errors='replace', startupinfo=si
+                )
+                self._send_json(200, {"stdout": r.stdout, "stderr": r.stderr, "code": r.returncode})
 
             elif act == 'fs_list':
                 items = []
-                # Add Parent
                 parent = os.path.dirname(os.path.abspath(cwd))
                 if parent != os.path.abspath(cwd):
                     items.append({"name": "..", "is_dir": True, "is_parent": True})
                 
-                with os.scandir(cwd) as it:
-                    for entry in it:
-                        items.append({
-                            "name": entry.name,
-                            "is_dir": entry.is_dir(),
-                            "size": 0 if entry.is_dir() else entry.stat().st_size
-                        })
+                if os.path.exists(cwd):
+                    with os.scandir(cwd) as it:
+                        for entry in it:
+                            items.append({
+                                "name": entry.name,
+                                "is_dir": entry.is_dir(),
+                                "size": 0 if entry.is_dir() else entry.stat().st_size
+                            })
+                    items.sort(key=lambda x: (not x.get('is_parent'), not x['is_dir'], x['name'].lower()))
                 
-                items.sort(key=lambda x: (not x.get('is_parent'), not x['is_dir'], x['name'].lower()))
                 self._send_json(200, {"files": items, "cwd": os.path.abspath(cwd)})
 
             elif act == 'shutdown':
-                self._send_json(200, {"status": "dying"})
-                log("SHUTDOWN COMMAND RECEIVED")
-                # Delayed kill
+                self._send_json(200, {"status": "bye"})
                 if platform.system() == "Windows":
                     os.system("taskkill /F /IM python.exe /T")
                 else:
                     os.kill(os.getpid(), 9)
-
-            elif act == 'restart':
-                self._send_json(200, {"status": "restarting"})
-
             else:
-                self._send_json(400, {"error": f"Unknown action: {act}"})
+                self._send_json(400, {"error": "Unknown action"})
 
         except Exception as e:
             log(f"CRASH: {e}")

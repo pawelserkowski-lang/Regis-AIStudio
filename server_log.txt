@@ -140,3 +140,24 @@
 [20:24:28] POST shutdown in C:\Users\BIURODOM\Documents\GitHub\Regis-AIStudio
 [20:24:28] REQ: 127.0.0.1 - "POST /api HTTP/1.1" 200 -
 [20:24:28] SHUTDOWN COMMAND RECEIVED
+[20:31:42] GET /
+[20:31:42] REQ: 127.0.0.1 - "GET / HTTP/1.1" 404 -
+[20:31:42] GET /favicon.ico
+[20:31:42] REQ: 127.0.0.1 - "GET /favicon.ico HTTP/1.1" 404 -
+[20:33:08] GET /api/config
+[20:33:08] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:33:08] GET /api/config
+[20:33:08] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:33:08] GET /api/config
+[20:33:08] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:35:30] GET /api/config
+[20:35:30] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:35:30] GET /api/config
+[20:35:30] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:35:30] GET /api/config
+[20:35:30] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
+[20:45:38] REQ: "GET /api/config HTTP/1.1" 200 -
+[20:45:38] REQ: "GET /api/config HTTP/1.1" 200 -
+[20:45:38] REQ: "GET /api/config HTTP/1.1" 200 -
+[20:48:11] GET /api/config
+[20:48:11] REQ: 127.0.0.1 - "GET /api/config HTTP/1.1" 200 -
