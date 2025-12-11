@@ -1,4 +1,7 @@
-from http.server import BaseHTTPRequestHandler
+{
+type: "file_update",
+fileName: "pawelserkowski-lang/regis-aistudio/Regis-AIStudio-09a00b723a43a269a027e324ca158d919fb1dbcd/api/index.py",
+fileContent: `from http.server import BaseHTTPRequestHandler
 import os, json, subprocess, platform, datetime, sys
 
 # SETUP LOGGING
@@ -7,7 +10,7 @@ def log(msg):
     try:
         with open(LOG_FILE, "a", encoding="utf-8") as f:
             ts = datetime.datetime.now().strftime("%H:%M:%S")
-            f.write(f"[{ts}] {msg}\n")
+            f.write(f"[{ts}] {msg}\\n")
     except: pass
 
 def translate_cmd(cmd):
@@ -42,9 +45,19 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
+        # Security Check (Enforced by tests)
+        if not os.environ.get('GOOGLE_API_KEY'):
+            self._send_json(500, {"error": "Missing Configuration: GOOGLE_API_KEY"})
+            return
+
         log(f"GET {self.path}")
-        if self.path == '/api':
-            self._send_json(200, {"status": "Alive", "version": "v17.0"})
+        if self.path == '/api' or self.path == '/':
+            self._send_json(200, {
+                "status": "Alive", 
+                "version": "v17.0",
+                "backend": "Python Serverless",
+                "react_version_target": "19.0.0"
+            })
         elif self.path == '/api/config':
             key = os.environ.get('GOOGLE_API_KEY', 'MISSING_KEY')
             self._send_json(200, {"envKey": key})
@@ -129,4 +142,5 @@ class handler(BaseHTTPRequestHandler):
 
         except Exception as e:
             log(f"CRASH: {e}")
-            self._send_json(500, {"error": str(e)})
+            self._send_json(500, {"error": str(e)})`
+}
