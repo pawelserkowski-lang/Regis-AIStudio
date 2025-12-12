@@ -253,20 +253,20 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
                 <span className="text-xl font-bold text-slate-100 font-mono tracking-wide matrix-text-shadow">REGIS PRIME</span>
                 <div className="flex gap-2">
                     <span className="text-[10px] bg-red-900/40 text-red-300 border border-red-800/50 px-2 py-0.5 rounded tracking-widest font-bold">GOD MODE</span>
-                    <button onClick={() => setShowCwdInput(!showCwdInput)} className="text-[10px] bg-emerald-900/20 text-emerald-300 border border-emerald-800/50 px-2 py-0.5 rounded hover:bg-emerald-900/40 transition-colors cursor-pointer truncate max-w-[200px]">DIR: {cwd}</button>
+                    <button type="button" onClick={() => setShowCwdInput(!showCwdInput)} className="text-[10px] bg-emerald-900/20 text-emerald-300 border border-emerald-800/50 px-2 py-0.5 rounded hover:bg-emerald-900/40 transition-colors cursor-pointer truncate max-w-[200px]">DIR: {cwd}</button>
                 </div>
             </div>
         </div>
         <div className="flex gap-3 relative">
-            <button onClick={() => setShowHelp(!showHelp)} className={`p-3 rounded-xl transition-all ${showHelp ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-500 hover:text-emerald-400 hover:bg-white/5'}`}><HelpCircle size={24} /></button>
+            <button type="button" onClick={() => setShowHelp(!showHelp)} className={`p-3 rounded-xl transition-all ${showHelp ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-500 hover:text-emerald-400 hover:bg-white/5'}`}><HelpCircle size={24} /></button>
             {showHelp && (<div className="absolute top-full right-0 mt-4 w-80 bg-slate-900/95 border border-emerald-500/30 p-6 rounded-2xl shadow-2xl z-[60] backdrop-blur-xl animate-in slide-in-from-top-2"><h3 className="text-emerald-400 font-bold mb-3 flex items-center gap-2"><Terminal size={16}/> COMMANDS</h3><ul className="space-y-2 text-sm text-slate-300 font-mono"><li><span className="text-emerald-500">/cmd [x]</span> Execute</li><li><span className="text-emerald-500">ls/dir</span> List</li></ul></div>)}
             <div className="relative">
-                <button onClick={() => setShowPowerMenu(!showPowerMenu)} className={`p-3 rounded-xl transition-all ${showPowerMenu ? 'bg-red-500/20 text-red-400' : 'text-slate-500 hover:text-red-400 hover:bg-white/5'}`}><Power size={24} /></button>
+                <button type="button" onClick={() => setShowPowerMenu(!showPowerMenu)} className={`p-3 rounded-xl transition-all ${showPowerMenu ? 'bg-red-500/20 text-red-400' : 'text-slate-500 hover:text-red-400 hover:bg-white/5'}`}><Power size={24} /></button>
                 {showPowerMenu && (
                     <div className="absolute top-full right-0 mt-4 w-56 bg-slate-900/95 border border-white/10 rounded-2xl shadow-2xl z-[60] flex flex-col overflow-hidden backdrop-blur-xl animate-in slide-in-from-top-2">
-                        <button onClick={onArchive} className="p-4 text-left hover:bg-emerald-500/10 text-slate-300 hover:text-emerald-400 flex items-center gap-3 text-sm font-bold"><Archive size={18}/> {t.archive}</button>
-                        <button onClick={handleRestart} className="p-4 text-left hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-400 flex items-center gap-2 text-sm border-t border-white/5"><RefreshCw size={18}/> {t.restart}</button>
-                        <button onClick={handleExit} className="p-4 text-left hover:bg-red-500/20 text-red-300 hover:text-red-400 flex items-center gap-3 text-sm border-t border-white/5 font-bold"><LogOut size={18}/> {t.exit}</button>
+                        <button type="button" onClick={onArchive} className="p-4 text-left hover:bg-emerald-500/10 text-slate-300 hover:text-emerald-400 flex items-center gap-3 text-sm font-bold"><Archive size={18}/> {t.archive}</button>
+                        <button type="button" onClick={handleRestart} className="p-4 text-left hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-400 flex items-center gap-2 text-sm border-t border-white/5"><RefreshCw size={18}/> {t.restart}</button>
+                        <button type="button" onClick={handleExit} className="p-4 text-left hover:bg-red-500/20 text-red-300 hover:text-red-400 flex items-center gap-3 text-sm border-t border-white/5 font-bold"><LogOut size={18}/> {t.exit}</button>
                     </div>
                 )}
             </div>
@@ -312,7 +312,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
         {dynamicSuggestions.length > 0 && (
             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide animate-in slide-in-from-bottom-4 fade-in">
                 {dynamicSuggestions.map((s, i) => (
-                    <button key={i} onClick={() => handleSend(s)} className="flex-shrink-0 flex items-center gap-3 bg-indigo-500/20 hover:bg-indigo-500/40 border border-indigo-500/50 px-5 py-3 rounded-2xl transition-all group whitespace-nowrap shadow-lg shadow-indigo-900/20">
+                    <button type="button" key={i} onClick={() => handleSend(s)} className="flex-shrink-0 flex items-center gap-3 bg-indigo-500/20 hover:bg-indigo-500/40 border border-indigo-500/50 px-5 py-3 rounded-2xl transition-all group whitespace-nowrap shadow-lg shadow-indigo-900/20">
                         <Lightbulb size={18} className="text-indigo-400 group-hover:text-white" />
                         <span className="text-sm font-bold text-indigo-200 group-hover:text-white">{s}</span>
                     </button>
@@ -323,7 +323,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide visible overflow-visible">
             {QUICK_BUBBLES.map((q, i) => (
                 <div key={i} className="group relative">
-                    <button onClick={() => handleCommand(q.cmd)} className="flex-shrink-0 flex items-center gap-3 bg-white/5 hover:bg-emerald-500/20 border border-white/5 hover:border-emerald-500/50 px-6 py-4 rounded-2xl transition-all">
+                    <button type="button" onClick={() => handleCommand(q.cmd)} className="flex-shrink-0 flex items-center gap-3 bg-white/5 hover:bg-emerald-500/20 border border-white/5 hover:border-emerald-500/50 px-6 py-4 rounded-2xl transition-all">
                         <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform"><Terminal size={18} /></div>
                         <div className="text-left"><div className="text-sm font-bold text-slate-200 group-hover:text-emerald-300">{q.label}</div></div>
                     </button>
@@ -332,15 +332,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
             ))}
         </div>
 
-        {attachments.length > 0 && (<div className="flex gap-3 p-3 bg-emerald-900/20 rounded-2xl mb-2 border border-emerald-500/20">{attachments.map((att, idx) => (<div key={idx} className="relative group">{att.type === 'image' ? <img src={att.url} className="w-20 h-20 object-cover rounded-xl border border-emerald-500/50 shadow-lg" /> : <div className="w-20 h-20 bg-black/50 rounded-xl flex items-center justify-center border border-emerald-500/30"><FileText className="text-emerald-400" size={32} /></div>}<button onClick={() => removeAttachment(idx)} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:scale-110 transition-transform"><X size={14} /></button></div>))}</div>)}
+        {attachments.length > 0 && (<div className="flex gap-3 p-3 bg-emerald-900/20 rounded-2xl mb-2 border border-emerald-500/20">{attachments.map((att, idx) => (<div key={idx} className="relative group">{att.type === 'image' ? <img src={att.url} className="w-20 h-20 object-cover rounded-xl border border-emerald-500/50 shadow-lg" /> : <div className="w-20 h-20 bg-black/50 rounded-xl flex items-center justify-center border border-emerald-500/30"><FileText className="text-emerald-400" size={32} /></div>}<button type="button" onClick={() => removeAttachment(idx)} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:scale-110 transition-transform"><X size={14} /></button></div>))}</div>)}
         
         <div className="w-full relative shadow-2xl shadow-emerald-900/10">
             <div className="flex items-end gap-4 bg-black/80 backdrop-blur-2xl p-5 rounded-[2rem] border border-white/10 focus-within:border-emerald-500/50 transition-all">
-                <button onClick={() => setShowCwdInput(!showCwdInput)} className={`p-4 rounded-2xl transition-all ${showCwdInput ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/5 text-slate-400'}`} title="Browse Files"><FolderOpen size={32} /></button>
+                <button type="button" onClick={() => setShowCwdInput(!showCwdInput)} className={`p-4 rounded-2xl transition-all ${showCwdInput ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/5 text-slate-400'}`} title="Browse Files"><FolderOpen size={32} /></button>
                 <label className="p-4 hover:bg-white/5 text-slate-400 rounded-2xl cursor-pointer transition-colors"><Paperclip size={32} /><input type="file" multiple className="hidden" onChange={async (e) => { if (e.target.files) { const files = Array.from(e.target.files); const newAttachments: Attachment[] = []; const errors: string[] = []; for (const file of files) { const result = await validateAndProcessFile(file); if (result.success && result.attachment) { newAttachments.push(result.attachment); } else if (result.error) { errors.push(result.error); console.error('File validation error:', result.error); } } if (errors.length > 0) { alert(errors.join('\n')); } if (newAttachments.length > 0) { setAttachments(prev => [...prev, ...newAttachments]); } e.target.value = ''; } }} /></label>
-                <button onClick={handleImprove} disabled={isImproving || !inputValue.trim()} className={`p-4 rounded-2xl transition-all ${isImproving ? 'text-emerald-400 animate-pulse' : 'text-slate-400 hover:text-emerald-400 hover:bg-white/5'}`} title="Improve Prompt (AI)"><Sparkles size={32} /></button>
-                <input value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} placeholder={isImproving ? t.improving : t.typeMsg} disabled={isImproving} className="flex-1 bg-transparent border-none focus:ring-0 text-2xl text-slate-100 placeholder:text-slate-600 px-4 py-3 font-mono h-auto min-h-[4rem]" />
-                <button onClick={() => handleSend()} disabled={isLoading || isImproving} className="p-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-[1.5rem] transition-all shadow-lg hover:shadow-emerald-500/20"><CornerDownLeft size={32} /></button>
+                <button type="button" onClick={handleImprove} disabled={isImproving || !inputValue.trim()} className={`p-4 rounded-2xl transition-all ${isImproving ? 'text-emerald-400 animate-pulse' : 'text-slate-400 hover:text-emerald-400 hover:bg-white/5'}`} title="Improve Prompt (AI)"><Sparkles size={32} /></button>
+                <textarea value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} placeholder={isImproving ? t.improving : t.typeMsg} disabled={isImproving} rows={1} autoComplete="off" autoCorrect="off" spellCheck="false" className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none text-2xl text-slate-100 placeholder:text-slate-600 px-4 py-3 font-mono resize-none overflow-y-auto max-h-40" style={{minHeight: '4rem'}} />
+                <button type="button" onClick={() => handleSend()} disabled={isLoading || isImproving} className="p-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-[1.5rem] transition-all shadow-lg hover:shadow-emerald-500/20"><CornerDownLeft size={32} /></button>
             </div>
         </div>
       </div>
