@@ -11,7 +11,9 @@
     "test:frontend": "vitest run",
     "test:all": "npm run test:backend && npm run test:frontend",
     "lint": "eslint src --ext .ts,.tsx",
-    "self-repair": "python self_repair.py"
+    "start:backend": "python scripts/start.py",
+    "start:backend:check": "python scripts/start.py --check",
+    "self-repair": "python scripts/self_repair.py"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",

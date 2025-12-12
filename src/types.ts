@@ -84,11 +84,49 @@ export interface AIModelConfig {
 }
 
 export const AVAILABLE_MODELS: AIModelConfig[] = [
+  // Claude Models 💜
   {
     id: "claude-sonnet-4-20250514",
     name: "Claude Sonnet 4",
     provider: "claude",
-    description: "Najnowszy model Claude",
+    description: "Najnowszy model Claude - szybki i inteligentny",
+    maxTokens: 8192,
+    supportsVision: true,
+    supportsStreaming: true,
+  },
+  {
+    id: "claude-3-5-sonnet-20241022",
+    name: "Claude 3.5 Sonnet",
+    provider: "claude",
+    description: "Świetny balans między szybkością a jakością",
+    maxTokens: 8192,
+    supportsVision: true,
+    supportsStreaming: true,
+  },
+  {
+    id: "claude-3-opus-20240229",
+    name: "Claude 3 Opus",
+    provider: "claude",
+    description: "Najpotężniejszy model - do złożonych zadań",
+    maxTokens: 4096,
+    supportsVision: true,
+    supportsStreaming: true,
+  },
+  {
+    id: "claude-3-haiku-20240307",
+    name: "Claude 3 Haiku",
+    provider: "claude",
+    description: "Najszybszy - do prostych zadań",
+    maxTokens: 4096,
+    supportsVision: true,
+    supportsStreaming: true,
+  },
+  // Gemini Models
+  {
+    id: "gemini-3-pro-preview",
+    name: "Gemini 3 Pro",
+    provider: "gemini",
+    description: "Google's flagship model",
     maxTokens: 8192,
     supportsVision: true,
     supportsStreaming: true,
@@ -104,7 +142,52 @@ export const AVAILABLE_MODELS: AIModelConfig[] = [
   },
 ];
 
+// Utility Functions
+export const getModelsByProvider = (provider: AIProvider): AIModelConfig[] => {
+  return AVAILABLE_MODELS.filter((m) => m.provider === provider);
+};
+
+export const getModelConfig = (modelId: AIModelId): AIModelConfig | undefined => {
+  return AVAILABLE_MODELS.find((m) => m.id === modelId);
+};
+
+// File System Types (for file browser)
 export interface FileSystemHandle {
   kind: "file" | "directory";
   name: string;
+}
+
+export interface FileEntry {
+  name: string;
+  is_dir: boolean;
+  is_parent?: boolean;
+  size?: number;
+}
+
+// API Response Types
+export interface APIConfigResponse {
+  claudeKey?: string;
+  geminiKey?: string;
+  envKey?: string;
+  defaultProvider: AIProvider;
+  hasClaudeKey: boolean;
+  hasGeminiKey: boolean;
+}
+
+export interface CommandResponse {
+  stdout: string;
+  stderr: string;
+  code: number;
+  cmd_executed?: string;
+}
+
+export interface ClaudeChatResponse {
+  content?: string;
+  text?: string;
+  error?: string;
+  model?: string;
+  usage?: {
+    input_tokens: number;
+    output_tokens: number;
+  };
 }
