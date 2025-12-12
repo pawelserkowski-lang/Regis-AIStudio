@@ -8,7 +8,7 @@ import Launcher from './components/Launcher';
 import HistoryView from './components/HistoryView';
 import ErrorBoundary from './components/ErrorBoundary';
 import { View, Message, RegistryItem, Sender, ChatSession } from './types';
-import { generateTitleForRegistry, systemLog, autoCurateRegistry } from './services/geminiService';
+import { systemLog, autoCurateRegistry } from './services/systemUtils';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.CHAT);

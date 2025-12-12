@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollText, ChevronDown, ChevronRight, Activity, Trash2 } from 'lucide-react';
-import { getLogs, LogEntry } from '../services/geminiService';
+import { ChevronDown, ChevronRight, Activity, Trash2 } from 'lucide-react';
+import { getLogs, LogEntry } from '../services/systemUtils';
 
 interface Props { lang: 'PL' | 'EN'; }
 

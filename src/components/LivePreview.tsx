@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MonitorPlay, RefreshCw, ExternalLink, Globe, ArrowRight } from 'lucide-react';
+import { MonitorPlay, RefreshCw, ExternalLink, Globe } from 'lucide-react';
 
 interface Props { lang: 'PL' | 'EN'; }
 

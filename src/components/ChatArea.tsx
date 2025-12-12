@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Bot, User, CornerDownLeft, FolderOpen, Power, HelpCircle, FileText, Folder, Terminal, Paperclip, X, UploadCloud, Sparkles, LogOut, RefreshCw, Archive, ArrowUpLeft, Lightbulb } from 'lucide-react';
 import { Message, Sender, Attachment } from '../types';
-import { sendMessageStream, executeSystemAction, improvePrompt } from '../services/geminiService';
+import { sendMessageStream, improvePrompt } from '../services/aiServiceAdapter';
+import { executeSystemAction } from '../services/systemUtils';
 import MatrixLoader from './MatrixLoader';
 
 interface ChatAreaProps {
