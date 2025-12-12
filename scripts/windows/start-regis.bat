@@ -1,5 +1,5 @@
 @echo off
-cd /d "%~dp0"
+cd /d "%~dp0..\.."
 
 echo.
 echo  REGIS AI STUDIO
@@ -13,12 +13,12 @@ if not exist "api\index.py" (
 )
 
 echo [1/2] Backend...
-start /min cmd /k "title REGIS-Backend && python api/index.py"
+start /min cmd /k "cd /d "%~dp0..\..\" && title REGIS-Backend && python api/index.py"
 
 timeout /t 2 /nobreak >nul
 
 echo [2/2] Frontend...
-start /min cmd /k "title REGIS-Frontend && npm run dev"
+start /min cmd /k "cd /d "%~dp0..\..\" && title REGIS-Frontend && npm run dev"
 
 timeout /t 3 /nobreak >nul
 
