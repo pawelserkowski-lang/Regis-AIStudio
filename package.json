@@ -6,23 +6,22 @@
   "scripts": {
     "dev": "vite --host --no-open --clearScreen false",
     "build": "tsc && vite build",
-    "launcher": "vite --host --no-open --clearScreen false",
+    "preview": "vite preview",
     "test:backend": "python -m unittest discover tests",
     "test:frontend": "vitest run",
-    "test:all": "npm run test:backend && npm run test:frontend"
+    "test:all": "npm run test:backend && npm run test:frontend",
+    "lint": "eslint src --ext .ts,.tsx",
+    "self-repair": "python self_repair.py"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
-    "emoji-picker-react": "^4.9.2",
     "lucide-react": "^0.556.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "recharts": "^2.15.0"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@testing-library/react": "^16.1.0",
     "@testing-library/jest-dom": "^6.4.2",
-    "jsdom": "^25.0.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/node": "^25.0.0",
