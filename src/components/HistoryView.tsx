@@ -1,25 +1,40 @@
-import React from 'react';
-import { Clock, Trash2, Play, Calendar } from 'lucide-react';
+import React, { useState } from 'react';
+import { Clock, Trash2, Play, Calendar, Search } from 'lucide-react';
 import { ChatSession, Message } from '../types';
 
-interface Props { 
-    lang: 'PL'|'EN'; 
-    onLoadSession: (msgs: Message[]) => void; 
+interface Props {
+    lang: 'PL'|'EN';
+    onLoadSession: (msgs: Message[]) => void;
     sessions: ChatSession[];
     setSessions: React.Dispatch<React.SetStateAction<ChatSession[]>>;
 }
 
 const HistoryView: React.FC<Props> = ({ lang, onLoadSession, sessions, setSessions }) => {
-    
+    const [searchTerm, setSearchTerm] = useState('');
+
     const deleteSession = (id: string) => {
         const newSessions = sessions.filter(s => s.id !== id);
         setSessions(newSessions);
         // Persistence is handled in App.tsx
     };
 
-    const t = lang === 'PL' 
-        ? { title: "ARCHIWUM SESJI", desc: "Przeglądaj zapisane konwersacje.", empty: "Brak zapisanych sesji.", load: "Wczytaj", del: "Usuń", msgs: "wiadomości" }
-        : { title: "SESSION ARCHIVE", desc: "Browse saved conversations.", empty: "No saved sessions.", load: "Load", del: "Delete", msgs: "messages" };
+    // Filter sessions based on search term (searches in title and message content)
+    const filteredSessions = sessions.filter(session => {
+        if (!searchTerm.trim()) return true;
+        const term = searchTerm.toLowerCase();
+
+        // Search in session title
+        if (session.title.toLowerCase().includes(term)) return true;
+
+        // Search in message content
+        return session.messages.some(msg =>
+            msg.text.toLowerCase().includes(term)
+        );
+    });
+
+    const t = lang === 'PL'
+        ? { title: "ARCHIWUM SESJI", desc: "Przeglądaj zapisane konwersacje.", empty: "Brak zapisanych sesji.", load: "Wczytaj", del: "Usuń", msgs: "wiadomości", search: "Szukaj w sesjach...", noResults: "Brak wyników wyszukiwania." }
+        : { title: "SESSION ARCHIVE", desc: "Browse saved conversations.", empty: "No saved sessions.", load: "Load", del: "Delete", msgs: "messages", search: "Search sessions...", noResults: "No search results found." };
 
     return (
         <div className="h-full flex flex-col p-12 bg-black/20 overflow-y-auto">
@@ -28,9 +43,23 @@ const HistoryView: React.FC<Props> = ({ lang, onLoadSession, sessions, setSessio
                 <p className="text-xl text-slate-400 mt-2">{t.desc}</p>
             </header>
 
+            {/* Search Input */}
+            <div className="bg-black/40 backdrop-blur-md p-4 rounded-3xl border border-white/10 mb-6 flex items-center">
+                <Search className="ml-4 text-slate-500" size={24} />
+                <input
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="w-full bg-transparent border-none p-4 text-xl text-slate-200 outline-none"
+                    placeholder={t.search}
+                />
+            </div>
+
             <div className="grid grid-cols-1 gap-4">
                 {sessions.length === 0 && <div className="text-slate-500 italic text-lg">{t.empty}</div>}
-                {sessions.map(s => (
+                {sessions.length > 0 && filteredSessions.length === 0 && searchTerm.trim() && (
+                    <div className="text-slate-500 italic text-lg">{t.noResults}</div>
+                )}
+                {filteredSessions.map(s => (
                     <div key={s.id} className="bg-black/40 border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:border-emerald-500/30 transition-all group">
                         <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
