@@ -58,6 +58,26 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const processedMessageIds = useRef<Set<string>>(new Set());
 
+  // Cleanup old processed IDs to prevent memory leak
+  useEffect(() => {
+    const currentIds = new Set(messages.map(m => m.id));
+    const processedIds = processedMessageIds.current;
+
+    // Remove IDs that no longer exist in messages
+    for (const id of processedIds) {
+      if (!currentIds.has(id)) {
+        processedIds.delete(id);
+      }
+    }
+
+    // Keep only last 100 IDs max
+    if (processedIds.size > 100) {
+      const idsArray = Array.from(processedIds);
+      const toRemove = idsArray.slice(0, idsArray.length - 100);
+      toRemove.forEach(id => processedIds.delete(id));
+    }
+  }, [messages]);
+
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, dynamicSuggestions]);
   useEffect(() => { if (showCwdInput) fetchFiles(); }, [showCwdInput, cwd]);
 
