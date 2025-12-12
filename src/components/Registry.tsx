@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Trash2, Calendar, Database } from 'lucide-react';
+import { Search, Trash2 } from 'lucide-react';
 import { RegistryItem } from '../types';
 interface RegistryProps { items: RegistryItem[]; onDeleteItem: (id: string) => void; lang: 'PL'|'EN'; }
 const Registry: React.FC<RegistryProps> = ({ items, onDeleteItem, lang }) => {
