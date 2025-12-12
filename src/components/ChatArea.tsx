@@ -18,9 +18,17 @@ interface ChatAreaProps {
 }
 
 const TXT = {
-  PL: { typeMsg: "Wpisz komendę...", cwd: "KATALOG", restart: "Restart", help: "Pomoc", files: "PLIKI:", drop: "Upuść pliki", improving: "Ulepszam...", exit: "ZAMKNIJ", archive: "Archiwizuj" },
-  EN: { typeMsg: "Enter command...", cwd: "WORK DIR", restart: "Restart", help: "Help", files: "FILES:", drop: "Drop files", improving: "Improving...", exit: "SHUTDOWN", archive: "Archive" }
+  PL: { typeMsg: "Wpisz komendę...", cwd: "KATALOG", restart: "Restart", help: "Pomoc", files: "PLIKI:", drop: "Upuść pliki", improving: "Ulepszam...", exit: "ZAMKNIJ", archive: "Archiwizuj", fileTooBig: "Plik za duży", invalidType: "Nieprawidłowy typ pliku", uploadError: "Błąd podczas wczytywania pliku" },
+  EN: { typeMsg: "Enter command...", cwd: "WORK DIR", restart: "Restart", help: "Help", files: "FILES:", drop: "Drop files", improving: "Improving...", exit: "SHUTDOWN", archive: "Archive", fileTooBig: "File too large", invalidType: "Invalid file type", uploadError: "Error uploading file" }
 };
+
+// File upload constraints
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_FILE_TYPES = [
+  'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+  'text/plain', 'text/csv', 'application/json', 'application/pdf'
+];
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.txt', '.csv', '.json', '.pdf'];
 
 const QUICK_BUBBLES = [
     { label: "📂 LS", cmd: "ls -la", desc: "List Files" },
@@ -160,6 +168,48 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
     } finally { setIsLoading(false); setMessages(prev => prev.map(msg => msg.id === botMessageId ? { ...msg, isStreaming: false } : msg)); }
   };
 
+  const validateAndProcessFile = async (file: File): Promise<{ success: boolean; attachment?: Attachment; error?: string }> => {
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      return { success: false, error: `${t.fileTooBig}: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB > 10MB)` };
+    }
+
+    // Validate file type
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    const isValidType = ALLOWED_FILE_TYPES.includes(file.type) || ALLOWED_EXTENSIONS.includes(fileExtension || '');
+
+    if (!isValidType) {
+      return { success: false, error: `${t.invalidType}: ${file.name} (${file.type || 'unknown'})` };
+    }
+
+    // Read file
+    try {
+      const reader = new FileReader();
+      const result = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            resolve(reader.result);
+          } else {
+            reject(new Error('Failed to read file as data URL'));
+          }
+        };
+        reader.onerror = () => reject(new Error(`${t.uploadError}: ${file.name}`));
+        reader.readAsDataURL(file);
+      });
+
+      const attachment: Attachment = {
+        type: 'image', // For now, all files are treated as image type for the AI
+        url: result,
+        mimeType: file.type || 'application/octet-stream',
+        data: result.split(',')[1]
+      };
+
+      return { success: true, attachment };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : `${t.uploadError}: ${file.name}` };
+    }
+  };
+
   const handleDragEnter = (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); };
   const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); };
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); };
@@ -167,14 +217,28 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
       e.preventDefault(); e.stopPropagation(); setIsDragging(false);
       const droppedFiles = Array.from(e.dataTransfer.files);
       if (droppedFiles.length === 0) return;
+
       const newAttachments: Attachment[] = [];
+      const errors: string[] = [];
+
       for (const file of droppedFiles) {
-          const reader = new FileReader();
-          const p = new Promise<void>((resolve) => { reader.onload = () => { if (typeof reader.result === 'string') { newAttachments.push({ type: 'image', url: reader.result, mimeType: file.type, data: reader.result.split(',')[1] }); } resolve(); }; });
-          reader.readAsDataURL(file); await p;
+          const result = await validateAndProcessFile(file);
+          if (result.success && result.attachment) {
+            newAttachments.push(result.attachment);
+          } else if (result.error) {
+            errors.push(result.error);
+            console.error('File validation error:', result.error);
+          }
       }
-      setAttachments(prev => [...prev, ...newAttachments]);
-  }, []);
+
+      if (errors.length > 0) {
+        alert(errors.join('\n'));
+      }
+
+      if (newAttachments.length > 0) {
+        setAttachments(prev => [...prev, ...newAttachments]);
+      }
+  }, [t]);
   const removeAttachment = (index: number) => setAttachments(prev => prev.filter((_, i) => i !== index));
 
   return (
@@ -272,7 +336,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
         <div className="w-full relative shadow-2xl shadow-emerald-900/10">
             <div className="flex items-end gap-4 bg-black/80 backdrop-blur-2xl p-5 rounded-[2rem] border border-white/10 focus-within:border-emerald-500/50 transition-all">
                 <button onClick={() => setShowCwdInput(!showCwdInput)} className={`p-4 rounded-2xl transition-all ${showCwdInput ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/5 text-slate-400'}`} title="Browse Files"><FolderOpen size={32} /></button>
-                <label className="p-4 hover:bg-white/5 text-slate-400 rounded-2xl cursor-pointer transition-colors"><Paperclip size={32} /><input type="file" multiple className="hidden" onChange={(e) => { if (e.target.files) { Array.from(e.target.files).forEach(file => { const reader = new FileReader(); reader.onload = () => { if(typeof reader.result === 'string') { setAttachments(prev => [...prev, { type: 'image', url: reader.result as string, mimeType: file.type, data: (reader.result as string).split(',')[1] }]); } }; reader.readAsDataURL(file); }); } }} /></label>
+                <label className="p-4 hover:bg-white/5 text-slate-400 rounded-2xl cursor-pointer transition-colors"><Paperclip size={32} /><input type="file" multiple className="hidden" onChange={async (e) => { if (e.target.files) { const files = Array.from(e.target.files); const newAttachments: Attachment[] = []; const errors: string[] = []; for (const file of files) { const result = await validateAndProcessFile(file); if (result.success && result.attachment) { newAttachments.push(result.attachment); } else if (result.error) { errors.push(result.error); console.error('File validation error:', result.error); } } if (errors.length > 0) { alert(errors.join('\n')); } if (newAttachments.length > 0) { setAttachments(prev => [...prev, ...newAttachments]); } e.target.value = ''; } }} /></label>
                 <button onClick={handleImprove} disabled={isImproving || !inputValue.trim()} className={`p-4 rounded-2xl transition-all ${isImproving ? 'text-emerald-400 animate-pulse' : 'text-slate-400 hover:text-emerald-400 hover:bg-white/5'}`} title="Improve Prompt (AI)"><Sparkles size={32} /></button>
                 <input value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} placeholder={isImproving ? t.improving : t.typeMsg} disabled={isImproving} className="flex-1 bg-transparent border-none focus:ring-0 text-2xl text-slate-100 placeholder:text-slate-600 px-4 py-3 font-mono h-auto min-h-[4rem]" />
                 <button onClick={() => handleSend()} disabled={isLoading || isImproving} className="p-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-[1.5rem] transition-all shadow-lg hover:shadow-emerald-500/20"><CornerDownLeft size={32} /></button>

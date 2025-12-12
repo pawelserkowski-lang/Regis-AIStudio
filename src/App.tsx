@@ -6,6 +6,7 @@ import LivePreview from './components/LivePreview';
 import SystemLogs from './components/SystemLogs';
 import Launcher from './components/Launcher';
 import HistoryView from './components/HistoryView';
+import ErrorBoundary from './components/ErrorBoundary';
 import { View, Message, RegistryItem, Sender, ChatSession } from './types';
 import { generateTitleForRegistry, systemLog, autoCurateRegistry } from './services/geminiService';
 
@@ -38,13 +39,66 @@ const App: React.FC = () => {
     try { return JSON.parse(localStorage.getItem('regis_registry') || '[]'); } catch { return []; }
   });
 
-  // PERSISTENCE
-  useEffect(() => { localStorage.setItem('regis_messages', JSON.stringify(messages)); }, [messages]);
-  useEffect(() => { localStorage.setItem('regis_registry', JSON.stringify(registryItems)); }, [registryItems]);
-  
-  // AUTO-SAVE SESSION LOGIC
-  useEffect(() => { 
-      localStorage.setItem('regis_sessions', JSON.stringify(sessions)); 
+  // PERSISTENCE with error handling
+  useEffect(() => {
+    try {
+      localStorage.setItem('regis_messages', JSON.stringify(messages));
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        console.error('Storage quota exceeded for messages. Clearing old data...');
+        // Keep only last 50 messages
+        const trimmedMessages = messages.slice(-50);
+        try {
+          localStorage.setItem('regis_messages', JSON.stringify(trimmedMessages));
+          setMessages(trimmedMessages);
+        } catch (retryError) {
+          console.error('Failed to save messages even after trimming:', retryError);
+        }
+      } else {
+        console.error('Failed to save messages to localStorage:', error);
+      }
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('regis_registry', JSON.stringify(registryItems));
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        console.error('Storage quota exceeded for registry. Clearing old items...');
+        // Keep only last 20 registry items
+        const trimmedRegistry = registryItems.slice(0, 20);
+        try {
+          localStorage.setItem('regis_registry', JSON.stringify(trimmedRegistry));
+          setRegistryItems(trimmedRegistry);
+        } catch (retryError) {
+          console.error('Failed to save registry even after trimming:', retryError);
+        }
+      } else {
+        console.error('Failed to save registry to localStorage:', error);
+      }
+    }
+  }, [registryItems]);
+
+  // AUTO-SAVE SESSION LOGIC with error handling
+  useEffect(() => {
+    try {
+      localStorage.setItem('regis_sessions', JSON.stringify(sessions));
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        console.error('Storage quota exceeded for sessions. Clearing old sessions...');
+        // Keep only last 10 sessions
+        const trimmedSessions = sessions.slice(0, 10);
+        try {
+          localStorage.setItem('regis_sessions', JSON.stringify(trimmedSessions));
+          setSessions(trimmedSessions);
+        } catch (retryError) {
+          console.error('Failed to save sessions even after trimming:', retryError);
+        }
+      } else {
+        console.error('Failed to save sessions to localStorage:', error);
+      }
+    }
   }, [sessions]);
 
   // ON MESSAGE CHANGE -> UPDATE CURRENT SESSION IN HISTORY
@@ -87,7 +141,12 @@ const App: React.FC = () => {
       setPromptHistory(prev => {
           // Limit increased to 100
           const newHist = [cmd, ...prev.filter(c => c !== cmd)].slice(0, 100);
-          localStorage.setItem('regis_prompt_history', JSON.stringify(newHist));
+          try {
+            localStorage.setItem('regis_prompt_history', JSON.stringify(newHist));
+          } catch (error) {
+            console.error('Failed to save prompt history:', error);
+            // Continue without saving to localStorage
+          }
           return newHist;
       });
   };
@@ -136,6 +195,7 @@ const App: React.FC = () => {
   };
 
   return (
+    <ErrorBoundary>
     <div className="relative flex h-full w-full bg-black text-slate-100 overflow-hidden font-mono">
       <div className="absolute inset-0 z-0 bg-[url('https://pawelserkowski.pl/background.webp')] bg-cover bg-center opacity-20" />
       <div className="absolute inset-0 z-0 bg-black/60" />
@@ -180,6 +240,7 @@ const App: React.FC = () => {
         </main>
       </div>
     </div>
+    </ErrorBoundary>
   );
 };
 export default App;

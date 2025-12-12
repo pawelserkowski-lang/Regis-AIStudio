@@ -48,11 +48,17 @@ let geminiChat: ReturnType<ReturnType<GoogleGenerativeAI["getGenerativeModel"]>[
 
 export function initializeGemini(apiKey: string): boolean {
   try {
+    // Validate API key format
+    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length === 0) {
+      throw new Error('Invalid API key: must be a non-empty string');
+    }
+
     geminiInstance = new GoogleGenerativeAI(apiKey);
     log("INFO", "Gemini", "Initialized successfully");
     return true;
   } catch (error) {
-    log("ERROR", "Gemini", "Initialization failed", error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown initialization error';
+    log("ERROR", "Gemini", "Initialization failed", { error: errorMessage });
     return false;
   }
 }
@@ -71,7 +77,10 @@ export async function streamGemini(
   log("INFO", "Gemini", `Sending message (${message.length} chars)`, { model });
 
   if (!geminiInstance) {
-    throw new Error("Gemini not initialized");
+    const error = new Error("Gemini not initialized. Please check your API key configuration.");
+    log("ERROR", "Gemini", "Instance not initialized", error);
+    callbacks.onError(error);
+    return;
   }
 
   try {
@@ -95,9 +104,16 @@ export async function streamGemini(
       { text: message }
     ];
 
+    // Validate and process attachments
     if (attachments?.length) {
       for (const attachment of attachments) {
         if (attachment.type === "image" && attachment.data) {
+          // Validate attachment data
+          if (!attachment.mimeType || typeof attachment.data !== 'string') {
+            log("WARN", "Gemini", "Invalid attachment format, skipping", { attachment });
+            continue;
+          }
+
           parts.push({
             inlineData: {
               mimeType: attachment.mimeType,
@@ -110,20 +126,63 @@ export async function streamGemini(
 
     const result = await geminiChat.sendMessageStream(parts);
     let fullText = "";
+    let hasReceivedData = false;
 
-    for await (const chunk of result.stream) {
-      const text = chunk.text();
-      if (text) {
-        fullText += text;
-        callbacks.onToken(text);
+    try {
+      for await (const chunk of result.stream) {
+        const text = chunk.text();
+        if (text && typeof text === 'string') {
+          hasReceivedData = true;
+          fullText += text;
+          callbacks.onToken(text);
+        }
       }
+    } catch (streamError) {
+      // Handle streaming errors
+      if (fullText.length > 0) {
+        // Partial response received - return what we have
+        log("WARN", "Gemini", "Stream interrupted but partial response available", {
+          receivedLength: fullText.length,
+          error: streamError
+        });
+        callbacks.onComplete(fullText);
+        return;
+      }
+      throw streamError;
+    }
+
+    if (!hasReceivedData) {
+      throw new Error("No data received from Gemini API. The response was empty.");
+    }
+
+    if (fullText.length === 0) {
+      log("WARN", "Gemini", "Empty response received from Gemini");
+      throw new Error("Received empty response from Gemini. Please try again.");
     }
 
     log("INFO", "Gemini", `Response complete (${fullText.length} chars)`);
     callbacks.onComplete(fullText);
 
   } catch (error) {
-    log("ERROR", "Gemini", "Stream error", error);
-    callbacks.onError(error instanceof Error ? error : new Error(String(error)));
+    // Provide user-friendly error messages
+    let errorMessage = 'An unexpected error occurred with Gemini';
+
+    if (error instanceof Error) {
+      // Parse Google API specific errors
+      if (error.message.includes('API key')) {
+        errorMessage = 'Invalid Gemini API key. Please check your configuration.';
+      } else if (error.message.includes('quota') || error.message.includes('RESOURCE_EXHAUSTED')) {
+        errorMessage = 'Gemini API quota exceeded. Please try again later.';
+      } else if (error.message.includes('safety') || error.message.includes('BLOCKED')) {
+        errorMessage = 'Request blocked by Gemini safety filters. Please rephrase your message.';
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
+    log("ERROR", "Gemini", "Stream error", { error, message: errorMessage });
+    callbacks.onError(new Error(errorMessage));
   }
 }
