@@ -56,13 +56,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
   const [dynamicSuggestions, setDynamicSuggestions] = useState<string[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const processedMessageIds = useRef<Set<string>>(new Set());
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, dynamicSuggestions]);
   useEffect(() => { if (showCwdInput) fetchFiles(); }, [showCwdInput, cwd]);
 
   useEffect(() => {
       const lastMsg = messages[messages.length - 1];
-      if (lastMsg && lastMsg.sender === Sender.BOT && !lastMsg.isStreaming && !isLoading) {
+      // Only process if it's a completed bot message we haven't processed yet
+      if (lastMsg && lastMsg.sender === Sender.BOT && !lastMsg.isStreaming && !isLoading && !processedMessageIds.current.has(lastMsg.id)) {
           const suggestionMatch = lastMsg.text.match(/```json:SUGGESTIONS\s*([\s\S]*?)\s*```/);
           if (suggestionMatch) {
               try {
@@ -70,6 +72,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
                   if (Array.isArray(suggs)) setDynamicSuggestions(suggs.slice(0, 6));
               } catch (e) {}
           }
+          // Mark as processed to avoid re-processing
+          processedMessageIds.current.add(lastMsg.id);
           onAutoCurate(lastMsg.text);
       }
   }, [messages, isLoading, onAutoCurate]);

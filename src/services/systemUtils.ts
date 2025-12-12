@@ -68,17 +68,25 @@ export const clearSystemLogs = (): void => {
 };
 
 /**
- * Execute system action via backend API
+ * Execute system action via backend API with timeout protection
  */
 export const executeSystemAction = async (action: string, payload: Record<string, any> = {}): Promise<any> => {
     systemLog('SYS', action, 'REQ', payload);
+
+    // Timeout protection: 30 seconds max for system actions
+    const SYSTEM_ACTION_TIMEOUT = 30000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SYSTEM_ACTION_TIMEOUT);
 
     try {
         const res = await fetch(`${API_URL}/api`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action, ...payload })
+            body: JSON.stringify({ action, ...payload }),
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
@@ -93,10 +101,18 @@ export const executeSystemAction = async (action: string, payload: Record<string
 
         return data;
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        clearTimeout(timeoutId);
+
+        let message = error instanceof Error ? error.message : String(error);
+
+        // Handle timeout specifically
+        if (error instanceof Error && error.name === 'AbortError') {
+            message = `Request timeout (30s) for action: ${action}`;
+        }
+
         systemLog('SYS', action, 'FAIL', message);
         console.error("System Action Failed:", error);
-        throw error;
+        throw new Error(message);
     }
 };
 

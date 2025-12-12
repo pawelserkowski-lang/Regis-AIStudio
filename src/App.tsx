@@ -39,20 +39,37 @@ const App: React.FC = () => {
     try { return JSON.parse(localStorage.getItem('regis_registry') || '[]'); } catch { return []; }
   });
 
-  // PERSISTENCE with error handling
+  // PERSISTENCE with error handling and size limits
   useEffect(() => {
     try {
-      localStorage.setItem('regis_messages', JSON.stringify(messages));
+      // Limit: Keep only last 100 messages to prevent storage bloat
+      const messagesToSave = messages.length > 100 ? messages.slice(-100) : messages;
+      const serialized = JSON.stringify(messagesToSave);
+
+      // Check serialized size (localStorage has ~5-10MB limit depending on browser)
+      // Keep under 2MB to be safe
+      const sizeInMB = new Blob([serialized]).size / (1024 * 1024);
+
+      if (sizeInMB > 2) {
+        console.warn(`Messages size (${sizeInMB.toFixed(2)}MB) exceeds 2MB, trimming...`);
+        const trimmedMessages = messages.slice(-50);
+        localStorage.setItem('regis_messages', JSON.stringify(trimmedMessages));
+        setMessages(trimmedMessages);
+      } else {
+        localStorage.setItem('regis_messages', serialized);
+      }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'QuotaExceededError') {
         console.error('Storage quota exceeded for messages. Clearing old data...');
-        // Keep only last 50 messages
-        const trimmedMessages = messages.slice(-50);
+        // Keep only last 30 messages
+        const trimmedMessages = messages.slice(-30);
         try {
           localStorage.setItem('regis_messages', JSON.stringify(trimmedMessages));
           setMessages(trimmedMessages);
         } catch (retryError) {
           console.error('Failed to save messages even after trimming:', retryError);
+          // Last resort: clear all messages
+          localStorage.removeItem('regis_messages');
         }
       } else {
         console.error('Failed to save messages to localStorage:', error);
