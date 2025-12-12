@@ -1,14 +1,28 @@
 import React, { useState } from 'react';
 import { Search, Trash2 } from 'lucide-react';
 import { RegistryItem } from '../types';
-interface RegistryProps { items: RegistryItem[]; onDeleteItem: (id: string) => void; lang: 'PL'|'EN'; }
-const Registry: React.FC<RegistryProps> = ({ items, onDeleteItem, lang }) => {
+interface RegistryProps { items: RegistryItem[]; onDeleteItem: (id: string) => void; onDeleteAll: () => void; lang: 'PL'|'EN'; }
+const Registry: React.FC<RegistryProps> = ({ items, onDeleteItem, onDeleteAll, lang }) => {
   const [term, setTerm] = useState('');
   const filtered = items.filter(i => i.title.toLowerCase().includes(term.toLowerCase()));
-  const t = lang === 'PL' ? { title: "Rejestr", desc: "Magazyn danych.", search: "Szukaj...", noData: "Brak danych." } : { title: "Registry", desc: "Encrypted storage.", search: "Search...", noData: "No data found." };
+  const t = lang === 'PL' ? { title: "Rejestr", desc: "Magazyn danych.", search: "Szukaj...", noData: "Brak danych.", deleteAll: "Usuń wszystkie" } : { title: "Registry", desc: "Encrypted storage.", search: "Search...", noData: "No data found.", deleteAll: "Delete all" };
   return (
     <div className="h-full overflow-y-auto p-12">
-      <header className="mb-12"><h1 className="text-5xl font-bold text-white mb-4 font-mono">{t.title}</h1><p className="text-xl text-slate-400">{t.desc}</p></header>
+      <header className="mb-12 flex justify-between items-start">
+        <div>
+          <h1 className="text-5xl font-bold text-white mb-4 font-mono">{t.title}</h1>
+          <p className="text-xl text-slate-400">{t.desc}</p>
+        </div>
+        {items.length > 0 && (
+          <button
+            onClick={onDeleteAll}
+            className="flex items-center gap-2 px-6 py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 rounded-2xl transition-all font-medium"
+          >
+            <Trash2 size={20} />
+            <span className="hidden md:inline">{t.deleteAll}</span>
+          </button>
+        )}
+      </header>
       <div className="bg-black/40 backdrop-blur-md p-4 rounded-3xl border border-white/10 mb-10 flex items-center"><Search className="ml-4 text-slate-500" size={24} /><input value={term} onChange={e => setTerm(e.target.value)} className="w-full bg-transparent border-none p-4 text-xl text-slate-200 outline-none" placeholder={t.search} /></div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filtered.map(item => (
