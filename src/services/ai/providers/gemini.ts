@@ -83,85 +83,107 @@ export async function streamGemini(
     return;
   }
 
+  // Timeout protection: 90 seconds max for streaming
+  const STREAM_TIMEOUT = 90000;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error("AI response timeout (90s). The request took too long to complete."));
+    }, STREAM_TIMEOUT);
+  });
+
   try {
-    const generativeModel = geminiInstance.getGenerativeModel({
-      model,
-      safetySettings: SAFETY_SETTINGS,
-      systemInstruction: SYSTEM_PROMPT,
-    });
+    await Promise.race([
+      (async () => {
+        const generativeModel = geminiInstance.getGenerativeModel({
+          model,
+          safetySettings: SAFETY_SETTINGS,
+          systemInstruction: SYSTEM_PROMPT,
+        });
 
-    if (!geminiChat) {
-      geminiChat = generativeModel.startChat({
-        history: [],
-        generationConfig: {
-          maxOutputTokens: 8192,
-          temperature: 0.7,
-        },
-      });
-    }
-
-    const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
-      { text: message }
-    ];
-
-    // Validate and process attachments
-    if (attachments?.length) {
-      for (const attachment of attachments) {
-        if (attachment.type === "image" && attachment.data) {
-          // Validate attachment data
-          if (!attachment.mimeType || typeof attachment.data !== 'string') {
-            log("WARN", "Gemini", "Invalid attachment format, skipping", { attachment });
-            continue;
-          }
-
-          parts.push({
-            inlineData: {
-              mimeType: attachment.mimeType,
-              data: attachment.data,
+        if (!geminiChat) {
+          geminiChat = generativeModel.startChat({
+            history: [],
+            generationConfig: {
+              maxOutputTokens: 8192,
+              temperature: 0.7,
             },
           });
         }
-      }
-    }
 
-    const result = await geminiChat.sendMessageStream(parts);
-    let fullText = "";
-    let hasReceivedData = false;
+        const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
+          { text: message }
+        ];
 
-    try {
-      for await (const chunk of result.stream) {
-        const text = chunk.text();
-        if (text && typeof text === 'string') {
-          hasReceivedData = true;
-          fullText += text;
-          callbacks.onToken(text);
+        // Validate and process attachments
+        if (attachments?.length) {
+          for (const attachment of attachments) {
+            if (attachment.type === "image" && attachment.data) {
+              // Validate attachment data
+              if (!attachment.mimeType || typeof attachment.data !== 'string') {
+                log("WARN", "Gemini", "Invalid attachment format, skipping", { attachment });
+                continue;
+              }
+
+              parts.push({
+                inlineData: {
+                  mimeType: attachment.mimeType,
+                  data: attachment.data,
+                },
+              });
+            }
+          }
         }
-      }
-    } catch (streamError) {
-      // Handle streaming errors
-      if (fullText.length > 0) {
-        // Partial response received - return what we have
-        log("WARN", "Gemini", "Stream interrupted but partial response available", {
-          receivedLength: fullText.length,
-          error: streamError
-        });
+
+        const result = await geminiChat.sendMessageStream(parts);
+        let fullText = "";
+        let hasReceivedData = false;
+        let lastChunkTime = Date.now();
+        const CHUNK_TIMEOUT = 30000; // 30s between chunks
+
+        try {
+          for await (const chunk of result.stream) {
+            // Check if we've been waiting too long for a chunk
+            const now = Date.now();
+            if (now - lastChunkTime > CHUNK_TIMEOUT) {
+              throw new Error("Stream stalled - no data received for 30 seconds");
+            }
+            lastChunkTime = now;
+
+            const text = chunk.text();
+            if (text && typeof text === 'string') {
+              hasReceivedData = true;
+              fullText += text;
+              callbacks.onToken(text);
+            }
+          }
+        } catch (streamError) {
+          // Handle streaming errors
+          if (fullText.length > 0) {
+            // Partial response received - return what we have
+            log("WARN", "Gemini", "Stream interrupted but partial response available", {
+              receivedLength: fullText.length,
+              error: streamError
+            });
+            callbacks.onComplete(fullText);
+            return;
+          }
+          throw streamError;
+        }
+
+        if (!hasReceivedData) {
+          throw new Error("No data received from Gemini API. The response was empty.");
+        }
+
+        if (fullText.length === 0) {
+          log("WARN", "Gemini", "Empty response received from Gemini");
+          throw new Error("Received empty response from Gemini. Please try again.");
+        }
+
+        log("INFO", "Gemini", `Response complete (${fullText.length} chars)`);
         callbacks.onComplete(fullText);
-        return;
-      }
-      throw streamError;
-    }
-
-    if (!hasReceivedData) {
-      throw new Error("No data received from Gemini API. The response was empty.");
-    }
-
-    if (fullText.length === 0) {
-      log("WARN", "Gemini", "Empty response received from Gemini");
-      throw new Error("Received empty response from Gemini. Please try again.");
-    }
-
-    log("INFO", "Gemini", `Response complete (${fullText.length} chars)`);
-    callbacks.onComplete(fullText);
+      })(),
+      timeoutPromise
+    ]);
 
   } catch (error) {
     // Provide user-friendly error messages
