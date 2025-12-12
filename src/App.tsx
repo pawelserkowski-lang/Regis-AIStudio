@@ -203,6 +203,15 @@ const App: React.FC = () => {
 
   const handleDeleteRegistryItem = (id: string) => { setRegistryItems(prev => prev.filter(item => item.id !== id)); };
 
+  const handleDeleteAllRegistry = () => {
+    const confirmText = lang === 'PL'
+      ? 'Czy na pewno chcesz usunąć wszystkie elementy z bazy?'
+      : 'Are you sure you want to delete all items from the registry?';
+    if (!confirm(confirmText)) return;
+    setRegistryItems([]);
+    systemLog('REGISTRY', 'DELETE-ALL', 'SUCCESS', { count: registryItems.length });
+  };
+
   const handleLoadSession = (msgs: Message[]) => {
       if(!confirm("Load this session? Current unsaved messages will be overwritten.")) return;
       setMessages(msgs);
@@ -249,7 +258,7 @@ const App: React.FC = () => {
                 );
                 case View.HISTORY: return <HistoryView lang={lang} sessions={sessions} setSessions={setSessions} onLoadSession={handleLoadSession} />;
                 case View.LIVE: return <LivePreview lang={lang} />;
-                case View.REGISTRY: return <Registry items={registryItems} onDeleteItem={handleDeleteRegistryItem} lang={lang} />;
+                case View.REGISTRY: return <Registry items={registryItems} onDeleteItem={handleDeleteRegistryItem} onDeleteAll={handleDeleteAllRegistry} lang={lang} />;
                 case View.LOGS: return <SystemLogs lang={lang} />;
                 default: return <div>View not found</div>;
                 }
