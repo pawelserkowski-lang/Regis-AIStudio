@@ -1,29 +1,16 @@
 @echo off
-title Regis AI Studio - Stop
+echo Zatrzymuje Regis AI Studio...
 
-echo.
-echo  [MATRIX] Zatrzymuje Regis AI Studio...
-echo.
+:: Zabij procesy po tytule okna
+taskkill /f /fi "WINDOWTITLE eq REGIS-Backend" >nul 2>&1
+taskkill /f /fi "WINDOWTITLE eq REGIS-Frontend" >nul 2>&1
 
-:: Zabij procesy Node.js (Vite)
-taskkill /f /im node.exe 2>nul
-if %errorlevel%==0 (
-    echo  [OK] Frontend zatrzymany
-) else (
-    echo  [--] Frontend nie byl uruchomiony
-)
+:: Zabij wszystkie procesy Node
+taskkill /f /im node.exe >nul 2>&1
 
-:: Zabij procesy Python
-for /f "tokens=2" %%a in ('tasklist /fi "WINDOWTITLE eq [REGIS]*" /fo list ^| find "PID:"') do (
-    taskkill /f /pid %%a 2>nul
-)
+:: Zwolnij porty (PowerShell)
+powershell -Command "Get-NetTCPConnection -LocalPort 3000,5173,8000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }" >nul 2>&1
 
-echo  [OK] Backend zatrzymany
-echo.
-echo  ====================================
-echo   REGIS AI STUDIO ZATRZYMANY
-echo  ====================================
-echo.
-
-timeout /t 3
+echo Zatrzymano!
+timeout /t 2
 exit
