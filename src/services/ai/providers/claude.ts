@@ -7,6 +7,9 @@ import type { ClaudeModelId } from "../../../types";
 import { log } from "../logger";
 import { getBackendUrl } from "../config";
 
+const STREAM_TIMEOUT = 60000; // 60 seconds
+const CHUNK_TIMEOUT = 10000; // 10 seconds per chunk
+
 const SYSTEM_PROMPT = `Jesteś REGIS - Zaawansowanym Asystentem AI z "God Mode" dostępem do systemu.
 
 TWOJA OSOBOWOŚĆ:
@@ -75,31 +78,62 @@ export async function streamClaude(
   };
 
   try {
+    // Create abort controller with overall timeout
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), STREAM_TIMEOUT);
+
     const response = await fetch(`${getBackendUrl()}/api/claude/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
+      signal: abortController.signal,
     });
 
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Claude API error: ${response.status} - ${errorText}`);
+      let errorText = 'Unknown error';
+      try {
+        errorText = await response.text();
+      } catch {
+        errorText = `HTTP ${response.status} ${response.statusText}`;
+      }
+
+      // Provide user-friendly error messages
+      if (response.status === 401) {
+        throw new Error(`Authentication failed. Please check your Claude API key.`);
+      } else if (response.status === 429) {
+        throw new Error(`Rate limit exceeded. Please wait a moment and try again.`);
+      } else if (response.status === 500) {
+        throw new Error(`Claude API server error. Please try again later.`);
+      } else {
+        throw new Error(`Claude API error (${response.status}): ${errorText}`);
+      }
     }
 
     const reader = response.body?.getReader();
     if (!reader) {
-      throw new Error("No response body");
+      throw new Error("No response stream available. Please check your connection.");
     }
 
     const decoder = new TextDecoder();
     let fullText = "";
     let buffer = "";
+    let lastChunkTime = Date.now();
+    let hasReceivedData = false;
 
     while (true) {
+      // Check for chunk timeout
+      if (Date.now() - lastChunkTime > CHUNK_TIMEOUT) {
+        throw new Error(`Stream timeout: No data received for ${CHUNK_TIMEOUT / 1000} seconds`);
+      }
+
       const { done, value } = await reader.read();
 
       if (done) break;
 
+      lastChunkTime = Date.now();
+      hasReceivedData = true;
       buffer += decoder.decode(value, { stream: true });
 
       const lines = buffer.split("\n\n");
@@ -113,15 +147,34 @@ export async function streamClaude(
 
           try {
             const parsed = JSON.parse(data);
-            if (parsed.text) {
+
+            // Validate parsed data structure
+            if (typeof parsed !== 'object' || parsed === null) {
+              log("WARN", "Claude", "Invalid SSE data format", { data });
+              continue;
+            }
+
+            if (parsed.text && typeof parsed.text === 'string') {
               fullText += parsed.text;
               callbacks.onToken(parsed.text);
+            } else if (parsed.error) {
+              throw new Error(`Stream error: ${parsed.error}`);
             }
-          } catch {
-            // Ignore parse errors
+          } catch (parseError) {
+            // Log parse errors but continue streaming
+            log("WARN", "Claude", "Failed to parse SSE chunk", { line, error: parseError });
           }
         }
       }
+    }
+
+    if (!hasReceivedData) {
+      throw new Error("No data received from Claude API. The stream was empty.");
+    }
+
+    if (fullText.length === 0) {
+      log("WARN", "Claude", "Empty response received from Claude");
+      throw new Error("Received empty response from Claude. Please try again.");
     }
 
     chatHistory.push({ role: "assistant", content: fullText });
@@ -135,8 +188,21 @@ export async function streamClaude(
     callbacks.onComplete(fullText);
 
   } catch (error) {
-    log("ERROR", "Claude", "Stream error", error);
-    callbacks.onError(error instanceof Error ? error : new Error(String(error)));
+    // Provide user-friendly error messages
+    let errorMessage = 'An unexpected error occurred';
+
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        errorMessage = `Request timeout after ${STREAM_TIMEOUT / 1000} seconds. Please try again.`;
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
+    log("ERROR", "Claude", "Stream error", { error, message: errorMessage });
+    callbacks.onError(new Error(errorMessage));
   }
 }
 

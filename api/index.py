@@ -47,12 +47,61 @@ def log(msg: str) -> None:
         pass
 
 
+def validate_api_key(key: Optional[str], provider: str) -> tuple[bool, Optional[str]]:
+    """
+    Validates API key format and returns (is_valid, error_message).
+
+    Args:
+        key: The API key to validate
+        provider: Provider name ('claude' or 'gemini')
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not key:
+        return False, None
+
+    if not isinstance(key, str):
+        return False, f"{provider} API key must be a string"
+
+    key = key.strip()
+
+    if len(key) == 0:
+        return False, f"{provider} API key is empty"
+
+    # Basic format validation
+    if provider == "claude":
+        # Anthropic keys typically start with 'sk-ant-'
+        if not key.startswith("sk-ant-") and len(key) < 20:
+            return False, f"Invalid {provider} API key format"
+    elif provider == "gemini":
+        # Google API keys are typically 39 characters
+        if len(key) < 20:
+            return False, f"Invalid {provider} API key format"
+
+    return True, None
+
+
 def get_api_keys() -> Dict[str, Optional[str]]:
-    """Pobiera klucze API z zmiennych środowiskowych."""
+    """Pobiera i waliduje klucze API z zmiennych środowiskowych."""
+    claude_key = os.environ.get("ANTHROPIC_API_KEY")
+    gemini_key = os.environ.get("GOOGLE_API_KEY")
+
+    # Validate keys if present
+    if claude_key:
+        is_valid, error = validate_api_key(claude_key, "claude")
+        if not is_valid and error:
+            log(f"WARNING: {error}")
+
+    if gemini_key:
+        is_valid, error = validate_api_key(gemini_key, "gemini")
+        if not is_valid and error:
+            log(f"WARNING: {error}")
+
     return {
-        "claude": os.environ.get("ANTHROPIC_API_KEY"),
-        "gemini": os.environ.get("GOOGLE_API_KEY"),
-        "default_provider": os.environ.get("DEFAULT_AI_PROVIDER", "claude"),
+        "claude": claude_key.strip() if claude_key else None,
+        "gemini": gemini_key.strip() if gemini_key else None,
+        "default_provider": os.environ.get("DEFAULT_AI_PROVIDER", "claude").lower(),
     }
 
 
@@ -167,21 +216,55 @@ class RegisAPIHandler(BaseHTTPRequestHandler):
         """Obsługuje chat z Claude API ze streamingiem."""
         if not ANTHROPIC_AVAILABLE:
             self._send_json(500, {
-                "error": "Anthropic SDK not installed. Run: pip install anthropic"
+                "error": "Anthropic SDK not installed. Run: pip install anthropic --break-system-packages",
+                "type": "missing_dependency"
             })
             return
 
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
             self._send_json(401, {
-                "error": "ANTHROPIC_API_KEY not configured in .env"
+                "error": "ANTHROPIC_API_KEY not configured in .env file. Please add your API key.",
+                "type": "missing_api_key"
             })
             return
 
+        # Validate API key
+        is_valid, error_msg = validate_api_key(api_key, "claude")
+        if not is_valid:
+            self._send_json(401, {
+                "error": error_msg or "Invalid Claude API key format",
+                "type": "invalid_api_key"
+            })
+            return
+
+        # Validate request data
         messages = data.get("messages", [])
+        if not isinstance(messages, list):
+            self._send_json(400, {
+                "error": "Invalid request: 'messages' must be an array",
+                "type": "invalid_request"
+            })
+            return
+
+        if len(messages) == 0:
+            self._send_json(400, {
+                "error": "Invalid request: 'messages' array is empty",
+                "type": "invalid_request"
+            })
+            return
+
         model = data.get("model", "claude-sonnet-4-20250514")
         system_prompt = data.get("system", "You are a helpful assistant.")
         stream = data.get("stream", True)
+
+        # Validate model name
+        if not isinstance(model, str) or len(model) == 0:
+            self._send_json(400, {
+                "error": "Invalid request: 'model' must be a non-empty string",
+                "type": "invalid_request"
+            })
+            return
 
         log(f"CLAUDE CHAT: model={model}, messages={len(messages)}, stream={stream}")
 
@@ -226,10 +309,44 @@ class RegisAPIHandler(BaseHTTPRequestHandler):
 
         except anthropic.APIError as e:
             log(f"CLAUDE API ERROR: {e}")
-            self._send_json(500, {"error": f"Claude API error: {str(e)}"})
+            error_type = "api_error"
+            status_code = 500
+
+            # Provide specific error messages based on error type
+            error_str = str(e)
+            if "authentication" in error_str.lower() or "api key" in error_str.lower():
+                error_type = "authentication_error"
+                status_code = 401
+                message = "Authentication failed. Please check your Claude API key."
+            elif "rate limit" in error_str.lower() or "429" in error_str:
+                error_type = "rate_limit_error"
+                status_code = 429
+                message = "Rate limit exceeded. Please wait a moment and try again."
+            elif "quota" in error_str.lower():
+                error_type = "quota_error"
+                status_code = 429
+                message = "API quota exceeded. Please check your account limits."
+            else:
+                message = f"Claude API error: {error_str}"
+
+            self._send_json(status_code, {
+                "error": message,
+                "type": error_type,
+                "details": error_str
+            })
+        except ValueError as e:
+            log(f"CLAUDE VALIDATION ERROR: {e}")
+            self._send_json(400, {
+                "error": f"Invalid request data: {str(e)}",
+                "type": "validation_error"
+            })
         except Exception as e:
-            log(f"CLAUDE ERROR: {e}")
-            self._send_json(500, {"error": str(e)})
+            log(f"CLAUDE UNEXPECTED ERROR: {e}\n{traceback.format_exc()}")
+            self._send_json(500, {
+                "error": "An unexpected error occurred. Please try again.",
+                "type": "internal_error",
+                "details": str(e)
+            })
 
     def _handle_claude_improve(self, data: Dict[str, Any]) -> None:
         """Ulepsza prompt używając Claude."""
@@ -279,6 +396,24 @@ Odpowiedz TYLKO ulepszonym promptem, bez wyjaśnień.""",
         if action == "command":
             cmd = data.get("command", "")
 
+            # Validate command
+            if not cmd or not isinstance(cmd, str):
+                self._send_json(400, {
+                    "error": "Invalid command: must be a non-empty string",
+                    "type": "invalid_request"
+                })
+                return
+
+            # Security: Warn about potentially dangerous commands
+            dangerous_patterns = ["rm -rf", "del /f", "format ", "mkfs", "dd if="]
+            if any(pattern in cmd.lower() for pattern in dangerous_patterns):
+                log(f"WARNING: Potentially dangerous command blocked: {cmd}")
+                self._send_json(403, {
+                    "error": "Command blocked for safety reasons",
+                    "type": "forbidden_command"
+                })
+                return
+
             # Windows command translation
             if platform.system() == "Windows":
                 if cmd.strip() == "ls":
@@ -286,39 +421,82 @@ Odpowiedz TYLKO ulepszonym promptem, bez wyjaśnień.""",
                 if cmd.startswith("ls "):
                     cmd = cmd.replace("ls ", "dir ", 1)
 
-            # Hide window on Windows
-            startupinfo = None
-            if platform.system() == "Windows":
-                startupinfo = subprocess.STARTUPINFO()
-                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                startupinfo.wShowWindow = subprocess.SW_HIDE
+            try:
+                # Hide window on Windows
+                startupinfo = None
+                if platform.system() == "Windows":
+                    startupinfo = subprocess.STARTUPINFO()
+                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                    startupinfo.wShowWindow = subprocess.SW_HIDE
 
-            result = subprocess.run(
-                cmd,
-                shell=True,
-                capture_output=True,
-                text=True,
-                cwd=cwd,
-                encoding="utf-8",
-                errors="replace",
-                startupinfo=startupinfo,
-            )
+                # Add timeout to prevent hanging
+                result = subprocess.run(
+                    cmd,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    cwd=cwd,
+                    encoding="utf-8",
+                    errors="replace",
+                    startupinfo=startupinfo,
+                    timeout=30  # 30 second timeout
+                )
 
-            self._send_json(200, {
-                "stdout": result.stdout,
-                "stderr": result.stderr,
-                "code": result.returncode,
-                "cmd_executed": cmd,
-            })
+                self._send_json(200, {
+                    "stdout": result.stdout,
+                    "stderr": result.stderr,
+                    "code": result.returncode,
+                    "cmd_executed": cmd,
+                })
+            except subprocess.TimeoutExpired:
+                log(f"COMMAND TIMEOUT: {cmd}")
+                self._send_json(408, {
+                    "error": "Command execution timeout (30s)",
+                    "type": "timeout_error",
+                    "cmd_executed": cmd
+                })
+            except FileNotFoundError as e:
+                log(f"COMMAND NOT FOUND: {cmd} - {e}")
+                self._send_json(404, {
+                    "error": f"Command not found: {str(e)}",
+                    "type": "not_found_error"
+                })
+            except PermissionError as e:
+                log(f"PERMISSION DENIED: {cmd} - {e}")
+                self._send_json(403, {
+                    "error": f"Permission denied: {str(e)}",
+                    "type": "permission_error"
+                })
+            except Exception as e:
+                log(f"COMMAND ERROR: {cmd} - {e}")
+                self._send_json(500, {
+                    "error": f"Command execution failed: {str(e)}",
+                    "type": "execution_error"
+                })
 
         elif action == "fs_list":
-            items = []
-            parent = os.path.dirname(os.path.abspath(cwd))
+            try:
+                # Validate cwd exists and is a directory
+                if not os.path.exists(cwd):
+                    self._send_json(404, {
+                        "error": f"Directory not found: {cwd}",
+                        "type": "not_found_error"
+                    })
+                    return
 
-            if parent != os.path.abspath(cwd):
-                items.append({"name": "..", "is_dir": True, "is_parent": True})
+                if not os.path.isdir(cwd):
+                    self._send_json(400, {
+                        "error": f"Path is not a directory: {cwd}",
+                        "type": "invalid_path_error"
+                    })
+                    return
 
-            if os.path.exists(cwd):
+                items = []
+                parent = os.path.dirname(os.path.abspath(cwd))
+
+                if parent != os.path.abspath(cwd):
+                    items.append({"name": "..", "is_dir": True, "is_parent": True})
+
                 with os.scandir(cwd) as it:
                     for entry in it:
                         try:
@@ -327,7 +505,8 @@ Odpowiedz TYLKO ulepszonym promptem, bez wyjaśnień.""",
                                 "is_dir": entry.is_dir(),
                                 "size": 0 if entry.is_dir() else entry.stat().st_size,
                             })
-                        except (PermissionError, OSError):
+                        except (PermissionError, OSError) as e:
+                            log(f"SKIPPING FILE (permission denied): {entry.name}")
                             continue
 
                 items.sort(
@@ -338,7 +517,19 @@ Odpowiedz TYLKO ulepszonym promptem, bez wyjaśnień.""",
                     )
                 )
 
-            self._send_json(200, {"files": items, "cwd": os.path.abspath(cwd)})
+                self._send_json(200, {"files": items, "cwd": os.path.abspath(cwd)})
+            except PermissionError as e:
+                log(f"PERMISSION DENIED: {cwd} - {e}")
+                self._send_json(403, {
+                    "error": f"Permission denied: {cwd}",
+                    "type": "permission_error"
+                })
+            except Exception as e:
+                log(f"FS_LIST ERROR: {e}")
+                self._send_json(500, {
+                    "error": f"Failed to list directory: {str(e)}",
+                    "type": "internal_error"
+                })
 
         elif action == "shutdown":
             log("SHUTDOWN COMMAND RECEIVED")

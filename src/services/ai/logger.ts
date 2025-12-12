@@ -37,8 +37,27 @@ export function log(
     logs.push(entry);
     while (logs.length > MAX_LOGS) logs.shift();
     localStorage.setItem(LOG_KEY, JSON.stringify(logs));
-  } catch {
-    // Ignore storage errors
+  } catch (error) {
+    // Handle storage quota exceeded
+    if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+      try {
+        // Clear oldest half of logs and try again
+        const logs: LogEntry[] = JSON.parse(localStorage.getItem(LOG_KEY) || "[]");
+        const trimmedLogs = logs.slice(Math.floor(logs.length / 2));
+        trimmedLogs.push(entry);
+        localStorage.setItem(LOG_KEY, JSON.stringify(trimmedLogs));
+        console.warn('Log storage quota exceeded. Cleared old logs.');
+      } catch (retryError) {
+        // If still failing, clear all logs
+        try {
+          localStorage.removeItem(LOG_KEY);
+          localStorage.setItem(LOG_KEY, JSON.stringify([entry]));
+        } catch {
+          // Give up silently
+        }
+      }
+    }
+    // Ignore other storage errors
   }
 }
 
