@@ -1,3 +1,3 @@
 @echo off
-cd /d "%~dp0"
-powershell -ExecutionPolicy Bypass -File "%~dp0setup.ps1"
+cd /d "%~dp0..\.."
+powershell -ExecutionPolicy Bypass -File "%~dp0..\..\setup.ps1"

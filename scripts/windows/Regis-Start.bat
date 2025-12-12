@@ -1,13 +1,13 @@
 @echo off
-cd /d "%~dp0"
+cd /d "%~dp0..\.."
 title Regis AI Studio
 
 echo Uruchamiam Regis AI Studio...
 
-start /min cmd /c "title REGIS-Backend && python api/index.py"
+start /min cmd /c "cd /d "%~dp0..\..\" && title REGIS-Backend && python api/index.py"
 timeout /t 2 /nobreak >nul
 
-start /min cmd /c "title REGIS-Frontend && npm run dev"
+start /min cmd /c "cd /d "%~dp0..\..\" && title REGIS-Frontend && npm run dev"
 timeout /t 4 /nobreak >nul
 
 :: Chrome
