@@ -11,6 +11,7 @@ import PerformanceMonitor from './components/PerformanceMonitor';
 import CodeSnippetLibrary from './components/CodeSnippetLibrary';
 import { View, Message, RegistryItem, Sender, ChatSession } from './types';
 import { systemLog, autoCurateRegistry } from './services/systemUtils';
+import { initializeAI } from './services/ai';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.CHAT);
@@ -157,8 +158,20 @@ const App: React.FC = () => {
   }, [messages]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 3000);
-    return () => clearTimeout(timer);
+    const init = async () => {
+      // Ensure minimum splash screen time and AI initialization
+      const minLoadTime = new Promise(resolve => setTimeout(resolve, 2000));
+      const aiInit = initializeAI();
+
+      // Wait for both minimum time and AI initialization
+      await Promise.all([minLoadTime, aiInit]);
+      setLoading(false);
+    };
+
+    init().catch(err => {
+      console.error('AI initialization error:', err);
+      setLoading(false); // Still hide loader so user can see the error
+    });
   }, []);
 
   const addToHistory = (cmd: string) => {
