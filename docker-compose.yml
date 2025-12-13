@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # =============================================================================
+  # Regis AI Studio - Main Application
+  # =============================================================================
+  regis-app:
+    container_name: regis-ai-studio
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"  # Backend API
+      - "5173:5173"  # Frontend dev server (optional)
+    environment:
+      # Application settings
+      - PORT=8000
+      - NODE_ENV=production
+
+      # API Keys (Load from .env file or set here)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+
+      # Optional: Custom settings
+      - PYTHONUNBUFFERED=1
+
+    volumes:
+      # Persist user data
+      - regis-data:/app/data
+
+      # Development: Mount source code for hot-reload (comment out for production)
+      # - ./src:/app/src
+      # - ./api:/app/api
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    networks:
+      - regis-network
+
+    # Resource limits (adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 512M
+
+  # =============================================================================
+  # Optional: Nginx Reverse Proxy (Uncomment to use)
+  # =============================================================================
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: regis-nginx
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - nginx-cache:/var/cache/nginx
+  #   depends_on:
+  #     - regis-app
+  #   restart: unless-stopped
+  #   networks:
+  #     - regis-network
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  regis-data:
+    driver: local
+  # nginx-cache:
+  #   driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  regis-network:
+    driver: bridge
