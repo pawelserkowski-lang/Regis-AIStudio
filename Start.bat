@@ -50,14 +50,14 @@ if %ERRORLEVEL% NEQ 0 (
     echo   [OK] Node.js !NODE_VER!
 )
 
-:: Check npm
+:: Check npm (use call to prevent hanging, skip update check)
 echo   Checking npm...
-npm --version >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
+set "NPM_VER="
+for /f "tokens=*" %%i in ('call npm --version --no-update-notifier 2^>^&1') do set "NPM_VER=%%i"
+if "!NPM_VER!"=="" (
     echo   [X] npm NOT FOUND
     set "ALL_OK=0"
 ) else (
-    for /f "tokens=*" %%i in ('npm --version 2^>^&1') do set "NPM_VER=%%i"
     echo   [OK] npm v!NPM_VER!
 )
 
@@ -114,7 +114,7 @@ echo   [OK] Python packages installed
 echo   Checking node_modules...
 if not exist "node_modules" (
     echo   Installing npm dependencies (this may take a minute)...
-    call npm install --silent 2>nul
+    call npm install --silent --no-update-notifier 2>nul
     echo   [OK] npm dependencies installed
 ) else (
     echo   [OK] node_modules exists
@@ -206,7 +206,7 @@ timeout /t 2 /nobreak >nul
 
 :: Start Frontend
 echo   Starting Frontend (port 5173)...
-start "REGIS-Frontend" /MIN cmd /c "cd /d "%~dp0" && !ENV_VARS! npm run dev"
+start "REGIS-Frontend" /MIN cmd /c "cd /d "%~dp0" && !ENV_VARS! npm run dev --no-update-notifier"
 echo   [OK] Frontend started
 
 :: Wait for frontend to be ready
