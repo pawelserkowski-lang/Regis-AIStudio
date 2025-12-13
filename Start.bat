@@ -110,15 +110,16 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo   [OK] Python packages installed
 
-:: Node modules
+:: Node modules (use goto to avoid if-block parsing issues with npm output)
 echo   Checking node_modules...
-if not exist "node_modules" (
-    echo   Installing npm dependencies (this may take a minute)...
-    call npm install --silent --no-update-notifier 2>nul
-    echo   [OK] npm dependencies installed
-) else (
-    echo   [OK] node_modules exists
-)
+if exist "node_modules" goto :skip_npm_install
+echo   Installing npm dependencies (this may take a minute)...
+call npm install --silent --no-update-notifier 2>nul
+echo   [OK] npm dependencies installed
+goto :npm_done
+:skip_npm_install
+echo   [OK] node_modules exists
+:npm_done
 echo.
 
 :: ============================================================================
