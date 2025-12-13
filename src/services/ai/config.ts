@@ -18,8 +18,14 @@ export interface APIModel {
   created_at?: string;
 }
 
-let cachedModels: APIModel[] | null = null;
-let modelsFetchPromise: Promise<APIModel[]> | null = null;
+export interface AllModelsCache {
+  claude: APIModel[];
+  gemini: APIModel[];
+  grok: APIModel[];
+}
+
+let cachedModels: AllModelsCache = { claude: [], gemini: [], grok: [] };
+let modelsFetchPromise: Promise<AllModelsCache> | null = null;
 
 /**
  * Validates the structure of the config response
@@ -63,18 +69,22 @@ export async function fetchConfig(): Promise<AIConfig> {
     const defaultProvider = typeof data.defaultProvider === 'string' ? data.defaultProvider : "claude";
     const hasClaudeKey = typeof data.hasClaudeKey === 'boolean' ? data.hasClaudeKey : false;
     const hasGeminiKey = typeof data.hasGeminiKey === 'boolean' ? data.hasGeminiKey : Boolean(data.geminiKey || data.envKey);
+    const hasGrokKey = typeof data.hasGrokKey === 'boolean' ? data.hasGrokKey : false;
 
     cachedConfig = {
       claudeKey: typeof data.claudeKey === 'string' ? data.claudeKey : null,
       geminiKey: typeof data.geminiKey === 'string' ? data.geminiKey : (typeof data.envKey === 'string' ? data.envKey : null),
-      defaultProvider: defaultProvider === "claude" || defaultProvider === "gemini" ? defaultProvider : "claude",
+      grokKey: typeof data.grokKey === 'string' ? data.grokKey : null,
+      defaultProvider: defaultProvider === "claude" || defaultProvider === "gemini" || defaultProvider === "grok" ? defaultProvider : "claude",
       hasClaudeKey,
       hasGeminiKey,
+      hasGrokKey,
     };
 
     log("INFO", "Config", "Configuration loaded", {
       hasClaudeKey: cachedConfig.hasClaudeKey,
       hasGeminiKey: cachedConfig.hasGeminiKey,
+      hasGrokKey: cachedConfig.hasGrokKey,
       defaultProvider: cachedConfig.defaultProvider,
     });
 
@@ -92,9 +102,11 @@ export async function fetchConfig(): Promise<AIConfig> {
     const fallbackConfig: AIConfig = {
       claudeKey: null,
       geminiKey: null,
+      grokKey: null,
       defaultProvider: "claude",
       hasClaudeKey: false,
       hasGeminiKey: false,
+      hasGrokKey: false,
     };
 
     return fallbackConfig;
@@ -110,12 +122,12 @@ export function getBackendUrl(): string {
 }
 
 /**
- * Fetches available models from the Claude API via backend
+ * Fetches available models from all providers via backend
  * Returns cached models if available, otherwise fetches from API
  */
-export async function fetchModels(): Promise<APIModel[]> {
-  // Return cached models if available
-  if (cachedModels !== null) {
+export async function fetchAllModels(): Promise<AllModelsCache> {
+  // Return cached models if any are available
+  if (cachedModels.claude.length > 0 || cachedModels.gemini.length > 0 || cachedModels.grok.length > 0) {
     return cachedModels;
   }
 
@@ -124,11 +136,11 @@ export async function fetchModels(): Promise<APIModel[]> {
     return modelsFetchPromise;
   }
 
-  log("INFO", "Config", "Fetching available models from API...");
+  log("INFO", "Config", "Fetching available models from all providers...");
 
   modelsFetchPromise = (async () => {
     try {
-      const response = await createFetchWithTimeout(`${BACKEND_URL}/api/models`, FETCH_TIMEOUT);
+      const response = await createFetchWithTimeout(`${BACKEND_URL}/api/models/all`, FETCH_TIMEOUT);
 
       if (!response.ok) {
         throw new Error(`Models fetch failed: ${response.status} ${response.statusText}`);
@@ -136,13 +148,16 @@ export async function fetchModels(): Promise<APIModel[]> {
 
       const data = await response.json();
 
-      if (data.models && Array.isArray(data.models)) {
-        cachedModels = data.models;
-        log("INFO", "Config", `Fetched ${data.models.length} models from API`);
-        return cachedModels;
-      }
+      cachedModels = {
+        claude: data.claude?.models || [],
+        gemini: data.gemini?.models || [],
+        grok: data.grok?.models || [],
+      };
 
-      throw new Error("Invalid models response structure");
+      const totalCount = cachedModels.claude.length + cachedModels.gemini.length + cachedModels.grok.length;
+      log("INFO", "Config", `Fetched ${totalCount} models (Claude: ${cachedModels.claude.length}, Gemini: ${cachedModels.gemini.length}, Grok: ${cachedModels.grok.length})`);
+
+      return cachedModels;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
@@ -152,8 +167,7 @@ export async function fetchModels(): Promise<APIModel[]> {
         log("ERROR", "Config", `Failed to fetch models: ${errorMessage}`, error);
       }
 
-      // Return empty array on error - fallback to hardcoded models will be handled by caller
-      cachedModels = [];
+      // Return empty cache on error - fallback to hardcoded models will be handled by caller
       return cachedModels;
     } finally {
       modelsFetchPromise = null;
@@ -164,9 +178,17 @@ export async function fetchModels(): Promise<APIModel[]> {
 }
 
 /**
- * Returns cached models (null if not yet fetched)
+ * Legacy function for backward compatibility - fetches Claude models only
  */
-export function getCachedModels(): APIModel[] | null {
+export async function fetchModels(): Promise<APIModel[]> {
+  const allModels = await fetchAllModels();
+  return allModels.claude;
+}
+
+/**
+ * Returns cached models for all providers
+ */
+export function getCachedModels(): AllModelsCache {
   return cachedModels;
 }
 
@@ -174,6 +196,6 @@ export function getCachedModels(): APIModel[] | null {
  * Clears the models cache to force a re-fetch
  */
 export function clearModelsCache(): void {
-  cachedModels = null;
+  cachedModels = { claude: [], gemini: [], grok: [] };
   modelsFetchPromise = null;
 }

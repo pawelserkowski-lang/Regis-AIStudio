@@ -60,20 +60,32 @@ export enum View {
 
 // === AI PROVIDER TYPES ===
 
-export type AIProvider = "claude" | "gemini";
+export type AIProvider = "claude" | "gemini" | "grok";
 
 export type GeminiModelId =
-  | "gemini-3-pro-preview"
+  | "gemini-2.5-pro"
   | "gemini-2.5-flash"
-  | "gemini-2.0-flash-exp";
+  | "gemini-2.0-flash"
+  | "gemini-2.0-flash-lite"
+  | string; // Allow dynamic models
 
 export type ClaudeModelId =
   | "claude-sonnet-4-20250514"
   | "claude-3-5-sonnet-20241022"
   | "claude-3-opus-20240229"
-  | "claude-3-haiku-20240307";
+  | "claude-3-haiku-20240307"
+  | string; // Allow dynamic models
 
-export type AIModelId = GeminiModelId | ClaudeModelId;
+export type GrokModelId =
+  | "grok-3"
+  | "grok-3-fast"
+  | "grok-3-mini"
+  | "grok-3-mini-fast"
+  | "grok-2"
+  | "grok-2-mini"
+  | string; // Allow dynamic models
+
+export type AIModelId = GeminiModelId | ClaudeModelId | GrokModelId;
 
 export interface AIModelConfig {
   id: AIModelId;
@@ -91,7 +103,7 @@ export const AVAILABLE_MODELS: AIModelConfig[] = [
     id: "claude-sonnet-4-20250514",
     name: "Claude Sonnet 4",
     provider: "claude",
-    description: "Najnowszy model Claude - szybki i inteligentny",
+    description: "Latest Claude model - fast and intelligent",
     maxTokens: 8192,
     supportsVision: true,
     supportsStreaming: true,
@@ -100,7 +112,7 @@ export const AVAILABLE_MODELS: AIModelConfig[] = [
     id: "claude-3-5-sonnet-20241022",
     name: "Claude 3.5 Sonnet",
     provider: "claude",
-    description: "Świetny balans między szybkością a jakością",
+    description: "Great balance between speed and quality",
     maxTokens: 8192,
     supportsVision: true,
     supportsStreaming: true,
@@ -109,7 +121,7 @@ export const AVAILABLE_MODELS: AIModelConfig[] = [
     id: "claude-3-opus-20240229",
     name: "Claude 3 Opus",
     provider: "claude",
-    description: "Najpotężniejszy model - do złożonych zadań",
+    description: "Most powerful - for complex tasks",
     maxTokens: 4096,
     supportsVision: true,
     supportsStreaming: true,
@@ -118,17 +130,17 @@ export const AVAILABLE_MODELS: AIModelConfig[] = [
     id: "claude-3-haiku-20240307",
     name: "Claude 3 Haiku",
     provider: "claude",
-    description: "Najszybszy - do prostych zadań",
+    description: "Fastest - for simple tasks",
     maxTokens: 4096,
     supportsVision: true,
     supportsStreaming: true,
   },
-  // Gemini Models
+  // Gemini Models 🔵
   {
-    id: "gemini-3-pro-preview",
-    name: "Gemini 3 Pro",
+    id: "gemini-2.5-pro",
+    name: "Gemini 2.5 Pro",
     provider: "gemini",
-    description: "Google's flagship model",
+    description: "Google's most capable model",
     maxTokens: 8192,
     supportsVision: true,
     supportsStreaming: true,
@@ -137,9 +149,64 @@ export const AVAILABLE_MODELS: AIModelConfig[] = [
     id: "gemini-2.5-flash",
     name: "Gemini 2.5 Flash",
     provider: "gemini",
-    description: "Fast Gemini model",
+    description: "Fast thinking model with great performance",
     maxTokens: 8192,
     supportsVision: true,
+    supportsStreaming: true,
+  },
+  {
+    id: "gemini-2.0-flash",
+    name: "Gemini 2.0 Flash",
+    provider: "gemini",
+    description: "Fast multimodal model",
+    maxTokens: 8192,
+    supportsVision: true,
+    supportsStreaming: true,
+  },
+  {
+    id: "gemini-2.0-flash-lite",
+    name: "Gemini 2.0 Flash Lite",
+    provider: "gemini",
+    description: "Lightweight and cost-efficient",
+    maxTokens: 8192,
+    supportsVision: true,
+    supportsStreaming: true,
+  },
+  // Grok Models ⚡
+  {
+    id: "grok-3",
+    name: "Grok 3",
+    provider: "grok",
+    description: "xAI's flagship model - most capable",
+    maxTokens: 131072,
+    supportsVision: true,
+    supportsStreaming: true,
+  },
+  {
+    id: "grok-3-fast",
+    name: "Grok 3 Fast",
+    provider: "grok",
+    description: "Faster version of Grok 3",
+    maxTokens: 131072,
+    supportsVision: true,
+    supportsStreaming: true,
+  },
+  {
+    id: "grok-3-mini",
+    name: "Grok 3 Mini",
+    provider: "grok",
+    description: "Lightweight thinking model",
+    maxTokens: 131072,
+    supportsVision: false,
+    supportsStreaming: true,
+  },
+  {
+    id: "grok-3-mini-fast",
+    name: "Grok 3 Mini Fast",
+    provider: "grok",
+    description: "Fastest Grok model",
+    maxTokens: 131072,
+    supportsVision: false,
     supportsStreaming: true,
   },
 ];
@@ -164,54 +231,110 @@ export interface APIModelInfo {
 }
 
 // Convert API model to AIModelConfig with sensible defaults
-export const apiModelToConfig = (apiModel: APIModelInfo): AIModelConfig => {
+export const apiModelToConfig = (apiModel: APIModelInfo, provider: AIProvider = 'claude'): AIModelConfig => {
   const id = apiModel.id;
 
   // Determine capabilities based on model name patterns
   const isOpus = id.includes('opus');
-  const isSonnet = id.includes('sonnet');
   const isHaiku = id.includes('haiku');
+  const isGrokMini = id.includes('grok') && id.includes('mini');
+  const isGeminiLite = id.includes('lite');
 
   // Sensible defaults based on model type
   let maxTokens = 8192;
   if (isOpus) maxTokens = 4096;
   if (isHaiku) maxTokens = 4096;
+  if (provider === 'grok') maxTokens = 131072;
+
+  // Vision support
+  let supportsVision = true;
+  if (isGrokMini) supportsVision = false;
 
   return {
     id: id as AIModelId,
     name: apiModel.name || id,
-    provider: 'claude',
-    description: getModelDescription(id),
+    provider,
+    description: getModelDescription(id, provider),
     maxTokens,
-    supportsVision: true,  // All Claude 3+ models support vision
+    supportsVision,
     supportsStreaming: true,
   };
 };
 
 // Generate description based on model ID
-const getModelDescription = (modelId: string): string => {
+const getModelDescription = (modelId: string, provider: AIProvider = 'claude'): string => {
+  // Claude models
   if (modelId.includes('opus')) return 'Most powerful - for complex tasks';
   if (modelId.includes('sonnet-4')) return 'Latest Claude model - fast and intelligent';
   if (modelId.includes('sonnet')) return 'Great balance between speed and quality';
   if (modelId.includes('haiku')) return 'Fastest - for simple tasks';
+
+  // Gemini models
+  if (modelId.includes('gemini-2.5-pro')) return "Google's most capable model";
+  if (modelId.includes('gemini-2.5-flash')) return 'Fast thinking model with great performance';
+  if (modelId.includes('flash-lite')) return 'Lightweight and cost-efficient';
+  if (modelId.includes('flash')) return 'Fast multimodal model';
+  if (modelId.includes('gemini')) return 'Google Gemini model';
+
+  // Grok models
+  if (modelId.includes('grok-3-mini-fast')) return 'Fastest Grok model';
+  if (modelId.includes('grok-3-mini')) return 'Lightweight thinking model';
+  if (modelId.includes('grok-3-fast')) return 'Faster version of Grok 3';
+  if (modelId.includes('grok-3')) return "xAI's flagship model - most capable";
+  if (modelId.includes('grok-2-mini')) return 'Compact Grok 2 model';
+  if (modelId.includes('grok-2')) return 'xAI Grok 2 model';
+  if (modelId.includes('grok')) return 'xAI Grok model';
+
+  // Default
+  if (provider === 'gemini') return 'Google Gemini model';
+  if (provider === 'grok') return 'xAI Grok model';
   return 'Claude AI model';
 };
 
 // Merge API models with fallback models (API models take priority)
-export const mergeModels = (apiModels: APIModelInfo[]): AIModelConfig[] => {
-  if (!apiModels || apiModels.length === 0) {
-    return AVAILABLE_MODELS;
+export const mergeModels = (
+  claudeApiModels: APIModelInfo[] = [],
+  geminiApiModels: APIModelInfo[] = [],
+  grokApiModels: APIModelInfo[] = []
+): AIModelConfig[] => {
+  const result: AIModelConfig[] = [];
+
+  // Claude models: Use API if available, fallback to hardcoded
+  if (claudeApiModels && claudeApiModels.length > 0) {
+    const convertedClaude = claudeApiModels
+      .filter(m => m.id && typeof m.id === 'string')
+      .map(m => apiModelToConfig(m, 'claude'));
+    result.push(...convertedClaude);
+  } else {
+    result.push(...AVAILABLE_MODELS.filter(m => m.provider === 'claude'));
   }
 
-  // Convert API models to AIModelConfig
-  const convertedApiModels = apiModels
-    .filter(m => m.id && typeof m.id === 'string')
-    .map(apiModelToConfig);
+  // Gemini models: Use API if available, fallback to hardcoded
+  if (geminiApiModels && geminiApiModels.length > 0) {
+    const convertedGemini = geminiApiModels
+      .filter(m => m.id && typeof m.id === 'string')
+      .map(m => apiModelToConfig(m, 'gemini'));
+    result.push(...convertedGemini);
+  } else {
+    result.push(...AVAILABLE_MODELS.filter(m => m.provider === 'gemini'));
+  }
 
-  // If we have API models, use them for Claude and keep Gemini from hardcoded
-  const geminiModels = AVAILABLE_MODELS.filter(m => m.provider === 'gemini');
+  // Grok models: Use API if available, fallback to hardcoded
+  if (grokApiModels && grokApiModels.length > 0) {
+    const convertedGrok = grokApiModels
+      .filter(m => m.id && typeof m.id === 'string')
+      .map(m => apiModelToConfig(m, 'grok'));
+    result.push(...convertedGrok);
+  } else {
+    result.push(...AVAILABLE_MODELS.filter(m => m.provider === 'grok'));
+  }
 
-  return [...convertedApiModels, ...geminiModels];
+  return result;
+};
+
+// Legacy merge function for backward compatibility
+export const mergeModelsLegacy = (apiModels: APIModelInfo[]): AIModelConfig[] => {
+  return mergeModels(apiModels, [], []);
 };
 
 // File System Types (for file browser)
@@ -231,10 +354,12 @@ export interface FileEntry {
 export interface APIConfigResponse {
   claudeKey?: string;
   geminiKey?: string;
+  grokKey?: string;
   envKey?: string;
   defaultProvider: AIProvider;
   hasClaudeKey: boolean;
   hasGeminiKey: boolean;
+  hasGrokKey: boolean;
 }
 
 export interface CommandResponse {

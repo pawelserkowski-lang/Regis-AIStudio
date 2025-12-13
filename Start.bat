@@ -104,9 +104,9 @@ echo   ------------------------------------------------------------
 
 :: Python packages
 echo   Installing Python packages...
-pip install anthropic python-dotenv google-generativeai -q --break-system-packages 2>nul
+pip install anthropic python-dotenv google-generativeai openai -q --break-system-packages 2>nul
 if %ERRORLEVEL% NEQ 0 (
-    pip install anthropic python-dotenv google-generativeai -q 2>nul
+    pip install anthropic python-dotenv google-generativeai openai -q 2>nul
 )
 echo   [OK] Python packages installed
 
@@ -185,6 +185,17 @@ if defined GOOGLE_API_KEY (
 ) else (
     echo   [!] GOOGLE_API_KEY not set [optional]
 )
+
+:: Check XAI_API_KEY (Grok)
+if defined XAI_API_KEY (
+    if not "!XAI_API_KEY!"=="your_xai_api_key_here" (
+        echo   [OK] XAI_API_KEY configured ^(Grok^)
+    ) else (
+        echo   [!] XAI_API_KEY is placeholder [optional]
+    )
+) else (
+    echo   [!] XAI_API_KEY not set [optional]
+)
 echo.
 
 :: ============================================================================
@@ -215,6 +226,7 @@ echo   ------------------------------------------------------------
 set "ENV_VARS="
 if defined ANTHROPIC_API_KEY set "ENV_VARS=!ENV_VARS! set ANTHROPIC_API_KEY=!ANTHROPIC_API_KEY! &&"
 if defined GOOGLE_API_KEY set "ENV_VARS=!ENV_VARS! set GOOGLE_API_KEY=!GOOGLE_API_KEY! &&"
+if defined XAI_API_KEY set "ENV_VARS=!ENV_VARS! set XAI_API_KEY=!XAI_API_KEY! &&"
 if defined VITE_API_URL set "ENV_VARS=!ENV_VARS! set VITE_API_URL=!VITE_API_URL! &&"
 if defined DEFAULT_AI_PROVIDER set "ENV_VARS=!ENV_VARS! set DEFAULT_AI_PROVIDER=!DEFAULT_AI_PROVIDER! &&"
 
@@ -294,15 +306,22 @@ echo   [OK] Browser launched
 echo.
 
 :: ============================================================================
-:: STEP 7: MINIMIZE SERVER WINDOWS
+:: STEP 7: MINIMIZE SERVER WINDOWS & AUTO-CLOSE LAUNCHER
 :: ============================================================================
-echo   [STEP 7/7] Minimizing Server Windows...
+echo   [STEP 7/7] Finalizing...
 echo   ------------------------------------------------------------
 
-:: Use PowerShell to minimize/hide the server windows to taskbar
-:: This runs in background and won't block the script
-powershell -WindowStyle Hidden -Command "Start-Sleep -Milliseconds 500; Get-Process | Where-Object {$_.MainWindowTitle -like 'REGIS-Backend*' -or $_.MainWindowTitle -like 'REGIS-Frontend*'} | ForEach-Object { $_.MainWindowHandle } | ForEach-Object { Add-Type -Name Win32 -Namespace Native -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);'; [Native.Win32]::ShowWindow($_, 6) }" 2>nul
-echo   [OK] Server windows minimized
+:: Minimize server windows using a separate PowerShell script for reliability
+:: Using start /B to run in background without waiting
+start /B "" powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "Start-Sleep -Seconds 1; ^
+   $windows = Get-Process | Where-Object {$_.MainWindowTitle -like 'REGIS-Backend*' -or $_.MainWindowTitle -like 'REGIS-Frontend*'}; ^
+   if ($windows) { ^
+     Add-Type -Name Win32 -Namespace Native -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);' -ErrorAction SilentlyContinue; ^
+     foreach ($w in $windows) { [Native.Win32]::ShowWindow($w.MainWindowHandle, 6) | Out-Null } ^
+   }" 2>nul
+
+echo   [OK] Server windows will be minimized
 
 echo.
 :: ============================================================================
@@ -318,13 +337,15 @@ echo   Frontend:  http://localhost:5173
 echo   Backend:   http://localhost:8000
 echo   Health:    http://localhost:8000/api/health
 echo.
-echo   Servers are running in minimized windows.
-echo   This launcher will close automatically in 3 seconds...
-echo   To stop servers: Close REGIS-Backend and REGIS-Frontend windows.
+echo   Servers are running in background windows.
+echo   This launcher will close automatically in 2 seconds...
+echo   To stop servers: Close REGIS-Backend and REGIS-Frontend windows
+echo   or use Task Manager.
 echo.
 echo   ============================================================
 echo.
 
-:: Auto-close the launcher after 3 seconds
-timeout /t 3 /nobreak >nul
-exit
+:: Auto-close the launcher after 2 seconds
+:: Using ping for more reliable delay than timeout
+ping -n 3 127.0.0.1 >nul 2>&1
+exit /b 0

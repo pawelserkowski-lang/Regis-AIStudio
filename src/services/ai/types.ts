@@ -5,9 +5,11 @@
 export interface AIConfig {
   claudeKey: string | null;
   geminiKey: string | null;
-  defaultProvider: "claude" | "gemini";
+  grokKey: string | null;
+  defaultProvider: "claude" | "gemini" | "grok";
   hasClaudeKey: boolean;
   hasGeminiKey: boolean;
+  hasGrokKey: boolean;
 }
 
 export interface StreamCallbacks {
