@@ -34,15 +34,45 @@ except ImportError:
     print("[WARN] Anthropic SDK not installed.")
     print("[TIP] Run: pip install anthropic --break-system-packages")
 
-LOG_FILE = "server_log.txt"
+LOG_DIR = "logs"
+LOG_FILE = os.path.join(LOG_DIR, "server_log.txt")
+CHAT_LOG = os.path.join(LOG_DIR, "chat.log")
+AI_COMMAND_LOG = os.path.join(LOG_DIR, "ai-commands.log")
+
+# Ensure logs directory exists
+os.makedirs(LOG_DIR, exist_ok=True)
 
 
 def log(msg: str) -> None:
     """Zapisuje wiadomość do logu z timestampem."""
     try:
         with open(LOG_FILE, "a", encoding="utf-8") as f:
-            ts = datetime.datetime.now().strftime("%H:%M:%S")
+            ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             f.write(f"[{ts}] {msg}\n")
+    except Exception:
+        pass
+
+
+def log_chat(role: str, content: str) -> None:
+    """Zapisuje interakcję czatu do pliku logu."""
+    try:
+        with open(CHAT_LOG, "a", encoding="utf-8") as f:
+            ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"[{ts}] [{role.upper()}] {content}\n")
+    except Exception:
+        pass
+
+
+def log_ai_command(command: str, result: str, exit_code: int = 0) -> None:
+    """Zapisuje komendy wykonywane przez AI."""
+    try:
+        with open(AI_COMMAND_LOG, "a", encoding="utf-8") as f:
+            ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"[{ts}]\n")
+            f.write(f"Command: {command}\n")
+            f.write(f"Exit Code: {exit_code}\n")
+            f.write(f"Result: {result}\n")
+            f.write(f"{'='*80}\n\n")
     except Exception:
         pass
 
@@ -268,6 +298,12 @@ class RegisAPIHandler(BaseHTTPRequestHandler):
 
         log(f"CLAUDE CHAT: model={model}, messages={len(messages)}, stream={stream}")
 
+        # Log user message
+        if messages and len(messages) > 0:
+            last_message = messages[-1]
+            if isinstance(last_message, dict) and last_message.get("role") == "user":
+                log_chat("user", last_message.get("content", "")[:500])  # Log first 500 chars
+
         try:
             client = anthropic.Anthropic(api_key=api_key)
 
@@ -279,6 +315,7 @@ class RegisAPIHandler(BaseHTTPRequestHandler):
                 self._send_cors()
                 self.end_headers()
 
+                full_response = ""
                 with client.messages.stream(
                     model=model,
                     max_tokens=4096,
@@ -286,8 +323,11 @@ class RegisAPIHandler(BaseHTTPRequestHandler):
                     messages=messages,
                 ) as stream_response:
                     for text in stream_response.text_stream:
+                        full_response += text
                         self._send_sse(json.dumps({"text": text}))
 
+                # Log assistant response
+                log_chat("assistant", full_response[:500])  # Log first 500 chars
                 self._send_sse("[DONE]")
 
             else:
@@ -298,8 +338,13 @@ class RegisAPIHandler(BaseHTTPRequestHandler):
                     system=system_prompt,
                     messages=messages,
                 )
+
+                # Log assistant response
+                assistant_content = response.content[0].text
+                log_chat("assistant", assistant_content[:500])  # Log first 500 chars
+
                 self._send_json(200, {
-                    "content": response.content[0].text,
+                    "content": assistant_content,
                     "model": response.model,
                     "usage": {
                         "input_tokens": response.usage.input_tokens,
@@ -441,6 +486,10 @@ Odpowiedz TYLKO ulepszonym promptem, bez wyjaśnień.""",
                     startupinfo=startupinfo,
                     timeout=30  # 30 second timeout
                 )
+
+                # Log AI command execution
+                output = result.stdout if result.stdout else result.stderr
+                log_ai_command(cmd, output[:500], result.returncode)
 
                 self._send_json(200, {
                     "stdout": result.stdout,
