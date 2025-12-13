@@ -122,20 +122,44 @@ if not exist "node_modules" (
 echo.
 
 :: ============================================================================
-:: STEP 3: LOAD API KEYS FROM ENVIRONMENT
+:: STEP 3: LOAD API KEYS FROM .env FILE
 :: ============================================================================
-echo   [STEP 3/6] Checking API Keys...
+echo   [STEP 3/6] Loading API Keys...
 echo   ------------------------------------------------------------
 
-if defined ANTHROPIC_API_KEY (
-    echo   [OK] ANTHROPIC_API_KEY configured
-) else (
-    echo   [!] ANTHROPIC_API_KEY not in environment
-    echo       Make sure it is set in .env file
+:: Load variables from .env file
+if exist ".env" (
+    echo   Loading from .env file...
+    for /f "usebackq tokens=1,* delims==" %%a in (".env") do (
+        set "LINE=%%a"
+        if not "!LINE:~0,1!"=="#" (
+            if not "!LINE!"=="" (
+                set "%%a=%%b"
+            )
+        )
+    )
+    echo   [OK] Environment loaded from .env
 )
 
+:: Check ANTHROPIC_API_KEY
+if defined ANTHROPIC_API_KEY (
+    if not "!ANTHROPIC_API_KEY!"=="your_anthropic_api_key_here" (
+        echo   [OK] ANTHROPIC_API_KEY configured
+    ) else (
+        echo   [!] ANTHROPIC_API_KEY is placeholder - please set real key in .env
+    )
+) else (
+    echo   [!] ANTHROPIC_API_KEY not found
+    echo       Please add it to .env file
+)
+
+:: Check GOOGLE_API_KEY
 if defined GOOGLE_API_KEY (
-    echo   [OK] GOOGLE_API_KEY configured
+    if not "!GOOGLE_API_KEY!"=="your_gemini_api_key_here" (
+        echo   [OK] GOOGLE_API_KEY configured
+    ) else (
+        echo   [!] GOOGLE_API_KEY is placeholder (optional)
+    )
 ) else (
     echo   [!] GOOGLE_API_KEY not set (optional)
 )
@@ -165,9 +189,16 @@ echo.
 echo   [STEP 5/6] Starting Servers...
 echo   ------------------------------------------------------------
 
+:: Prepare environment variables for child processes
+set "ENV_VARS="
+if defined ANTHROPIC_API_KEY set "ENV_VARS=!ENV_VARS! set ANTHROPIC_API_KEY=!ANTHROPIC_API_KEY! &&"
+if defined GOOGLE_API_KEY set "ENV_VARS=!ENV_VARS! set GOOGLE_API_KEY=!GOOGLE_API_KEY! &&"
+if defined VITE_API_URL set "ENV_VARS=!ENV_VARS! set VITE_API_URL=!VITE_API_URL! &&"
+if defined DEFAULT_AI_PROVIDER set "ENV_VARS=!ENV_VARS! set DEFAULT_AI_PROVIDER=!DEFAULT_AI_PROVIDER! &&"
+
 :: Start Backend
 echo   Starting Backend (port 8000)...
-start "REGIS-Backend" /MIN cmd /c "cd /d "%~dp0" && python api/index.py"
+start "REGIS-Backend" /MIN cmd /c "cd /d "%~dp0" && !ENV_VARS! python api/index.py"
 echo   [OK] Backend started
 
 :: Wait for backend
@@ -175,7 +206,7 @@ timeout /t 2 /nobreak >nul
 
 :: Start Frontend
 echo   Starting Frontend (port 5173)...
-start "REGIS-Frontend" /MIN cmd /c "cd /d "%~dp0" && npm run dev"
+start "REGIS-Frontend" /MIN cmd /c "cd /d "%~dp0" && !ENV_VARS! npm run dev"
 echo   [OK] Frontend started
 
 :: Wait for frontend to be ready
