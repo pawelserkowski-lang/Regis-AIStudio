@@ -21,7 +21,7 @@ echo.
 :: ============================================================================
 :: STEP 1: CHECK REQUIREMENTS
 :: ============================================================================
-echo   [STEP 1/6] Checking Requirements...
+echo   [STEP 1/7] Checking Requirements...
 echo   ------------------------------------------------------------
 
 set "ALL_OK=1"
@@ -99,7 +99,7 @@ echo.
 :: ============================================================================
 :: STEP 2: INSTALL DEPENDENCIES
 :: ============================================================================
-echo   [STEP 2/6] Installing Dependencies...
+echo   [STEP 2/7] Installing Dependencies...
 echo   ------------------------------------------------------------
 
 :: Python packages
@@ -125,7 +125,7 @@ echo.
 :: ============================================================================
 :: STEP 3: LOAD API KEYS FROM .env FILE
 :: ============================================================================
-echo   [STEP 3/6] Loading API Keys...
+echo   [STEP 3/7] Loading API Keys...
 echo   ------------------------------------------------------------
 
 :: Load variables from .env file (only if not already set in Windows environment)
@@ -190,7 +190,7 @@ echo.
 :: ============================================================================
 :: STEP 4: CLEANUP PORTS
 :: ============================================================================
-echo   [STEP 4/6] Cleaning Up Ports...
+echo   [STEP 4/7] Cleaning Up Ports...
 echo   ------------------------------------------------------------
 
 :: Kill processes on ports 5173 and 8000
@@ -208,7 +208,7 @@ echo.
 :: ============================================================================
 :: STEP 5: START SERVERS
 :: ============================================================================
-echo   [STEP 5/6] Starting Servers...
+echo   [STEP 5/7] Starting Servers...
 echo   ------------------------------------------------------------
 
 :: Prepare environment variables for child processes
@@ -260,7 +260,7 @@ echo.
 :: ============================================================================
 :: STEP 6: LAUNCH BROWSER
 :: ============================================================================
-echo   [STEP 6/6] Launching Browser...
+echo   [STEP 6/7] Launching Browser...
 echo   ------------------------------------------------------------
 
 :: Find Chrome or Edge
@@ -294,7 +294,19 @@ echo   [OK] Browser launched
 echo.
 
 :: ============================================================================
-:: SUCCESS MESSAGE
+:: STEP 7: MINIMIZE SERVER WINDOWS
+:: ============================================================================
+echo   [STEP 7/7] Minimizing Server Windows...
+echo   ------------------------------------------------------------
+
+:: Use PowerShell to minimize/hide the server windows to taskbar
+:: This runs in background and won't block the script
+powershell -WindowStyle Hidden -Command "Start-Sleep -Milliseconds 500; Get-Process | Where-Object {$_.MainWindowTitle -like 'REGIS-Backend*' -or $_.MainWindowTitle -like 'REGIS-Frontend*'} | ForEach-Object { $_.MainWindowHandle } | ForEach-Object { Add-Type -Name Win32 -Namespace Native -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);'; [Native.Win32]::ShowWindow($_, 6) }" 2>nul
+echo   [OK] Server windows minimized
+
+echo.
+:: ============================================================================
+:: SUCCESS - AUTO EXIT
 :: ============================================================================
 echo   ============================================================
 echo.
@@ -307,10 +319,12 @@ echo   Backend:   http://localhost:8000
 echo   Health:    http://localhost:8000/api/health
 echo.
 echo   Servers are running in minimized windows.
-echo   Close this window to keep servers running in background.
-echo   To stop: Close the REGIS-Backend and REGIS-Frontend windows.
+echo   This launcher will close automatically in 3 seconds...
+echo   To stop servers: Close REGIS-Backend and REGIS-Frontend windows.
 echo.
 echo   ============================================================
 echo.
 
-pause
+:: Auto-close the launcher after 3 seconds
+timeout /t 3 /nobreak >nul
+exit
