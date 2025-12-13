@@ -150,22 +150,22 @@ export function setModel(modelId: AIModelId): void {
 
   if (modelId.startsWith("claude")) {
     currentClaudeModel = modelId as ClaudeModelId;
-    // Also switch provider to Claude
+    // ALWAYS switch provider to match model - let streamClaude handle missing key error
+    currentProvider = "claude";
     if (config?.hasClaudeKey) {
-      currentProvider = "claude";
       log("INFO", "Model", `Claude model set to: ${modelId}, provider switched to claude`);
     } else {
-      log("WARN", "Model", `Claude model ${modelId} selected but no API key - provider unchanged`);
+      log("WARN", "Model", `Claude model ${modelId} selected but no API key configured`);
     }
   } else if (modelId.startsWith("gemini")) {
     currentGeminiModel = modelId as GeminiModelId;
     clearGeminiChat();
-    // Also switch provider to Gemini
+    // ALWAYS switch provider to match model - let streamGemini handle missing key error
+    currentProvider = "gemini";
     if (config?.hasGeminiKey) {
-      currentProvider = "gemini";
       log("INFO", "Model", `Gemini model set to: ${modelId}, provider switched to gemini`);
     } else {
-      log("WARN", "Model", `Gemini model ${modelId} selected but no API key - provider unchanged`);
+      log("WARN", "Model", `Gemini model ${modelId} selected but no API key configured`);
     }
   } else if (modelId.startsWith("grok")) {
     // Handle Grok models - store in geminiModel as fallback for now
@@ -190,7 +190,7 @@ export async function sendMessageStream(
     return;
   }
 
-  log("INFO", "AI", `Routing message to ${currentProvider}`);
+  log("INFO", "AI", `Routing message to ${currentProvider} (model: ${currentProvider === "claude" ? currentClaudeModel : currentGeminiModel})`);
 
   try {
     if (currentProvider === "claude") {
@@ -199,6 +199,23 @@ export async function sendMessageStream(
       await streamGemini(message, currentGeminiModel, callbacks, attachments);
     }
   } catch (error) {
+    const primaryError = error instanceof Error ? error : new Error(String(error));
+    const primaryProvider = currentProvider;
+
+    log("ERROR", "AI", `${primaryProvider} failed: ${primaryError.message}`);
+
+    // Check if this is a non-retryable error (don't fallback for config/init errors)
+    const errorMessage = primaryError.message.toLowerCase();
+    const isConfigError = errorMessage.includes('not initialized') ||
+                          errorMessage.includes('api key') ||
+                          errorMessage.includes('configuration');
+
+    if (isConfigError) {
+      // Don't fallback for configuration errors - show the actual error
+      callbacks.onError(primaryError);
+      return;
+    }
+
     const fallbackProvider = currentProvider === "claude" ? "gemini" : "claude";
     const config = getConfigInternal();
 
@@ -207,7 +224,7 @@ export async function sendMessageStream(
       (fallbackProvider === "gemini" && config?.hasGeminiKey);
 
     if (canFallback) {
-      log("WARN", "AI", `Primary failed, trying fallback: ${fallbackProvider}`);
+      log("WARN", "AI", `Primary (${primaryProvider}) failed, trying fallback: ${fallbackProvider}`);
 
       const originalProvider = currentProvider;
       currentProvider = fallbackProvider;
@@ -218,13 +235,20 @@ export async function sendMessageStream(
         } else {
           await streamGemini(message, currentGeminiModel, callbacks, attachments);
         }
-        log("INFO", "AI", `Fallback successful`);
+        log("INFO", "AI", `Fallback to ${fallbackProvider} successful`);
       } catch (fallbackError) {
         currentProvider = originalProvider;
-        callbacks.onError(fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError)));
+        // Show BOTH errors - primary error first
+        const fallbackErrorMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+        const combinedError = new Error(
+          `${primaryProvider} error: ${primaryError.message}. ` +
+          `Fallback to ${fallbackProvider} also failed: ${fallbackErrorMsg}`
+        );
+        log("ERROR", "AI", `Both providers failed: ${combinedError.message}`);
+        callbacks.onError(combinedError);
       }
     } else {
-      callbacks.onError(error instanceof Error ? error : new Error(String(error)));
+      callbacks.onError(primaryError);
     }
   }
 }

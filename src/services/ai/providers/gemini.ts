@@ -198,6 +198,7 @@ const SAFETY_SETTINGS = [
 
 let geminiInstance: GoogleGenerativeAI | null = null;
 let geminiChat: ReturnType<ReturnType<GoogleGenerativeAI["getGenerativeModel"]>["startChat"]> | null = null;
+let currentChatModel: string | null = null; // Track which model the chat was created with
 
 export function initializeGemini(apiKey: string): boolean {
   try {
@@ -218,6 +219,7 @@ export function initializeGemini(apiKey: string): boolean {
 
 export function clearGeminiChat(): void {
   geminiChat = null;
+  currentChatModel = null;
   log("INFO", "Gemini", "Chat session cleared");
 }
 
@@ -253,7 +255,11 @@ export async function streamGemini(
           systemInstruction: SYSTEM_PROMPT,
         });
 
-        if (!geminiChat) {
+        // Recreate chat if model changed or chat doesn't exist
+        if (!geminiChat || currentChatModel !== model) {
+          if (currentChatModel && currentChatModel !== model) {
+            log("INFO", "Gemini", `Model changed from ${currentChatModel} to ${model}, creating new chat session`);
+          }
           geminiChat = generativeModel.startChat({
             history: [],
             generationConfig: {
@@ -261,6 +267,8 @@ export async function streamGemini(
               temperature: 0.7,
             },
           });
+          currentChatModel = model;
+          log("INFO", "Gemini", `Chat session created with model: ${model}`);
         }
 
         const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
