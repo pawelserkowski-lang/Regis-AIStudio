@@ -1,8 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Bot, User, CornerDownLeft, FolderOpen, Power, HelpCircle, FileText, Folder, Terminal, Paperclip, X, UploadCloud, Sparkles, LogOut, RefreshCw, Archive, ArrowUpLeft, Lightbulb, BookTemplate } from 'lucide-react';
 import { Message, Sender, Attachment, AIModelId } from '../types';
-import { sendMessageStream, improvePrompt } from '../services/aiServiceAdapter';
-import { setModel } from '../services/ai';
+import { sendMessageStream, improvePrompt, setModel } from '../services/ai';
 import { executeSystemAction } from '../services/systemUtils';
 import MatrixLoader from './MatrixLoader';
 import PromptTemplates from './PromptTemplates';
