@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, Zap, Brain, Sparkles, Gauge, Check, RefreshCw, Loader2, Cpu, Bot } from 'lucide-react';
-import { AIModelId, ClaudeModelId, AVAILABLE_MODELS, getModelConfig, AIModelConfig, mergeModels, APIModelInfo, AIProvider } from '../types';
+import { AIModelId, AVAILABLE_MODELS, getModelConfig, AIModelConfig, mergeModels, APIModelInfo, AIProvider } from '../types';
 import { fetchAllModels, getCachedModels } from '../services/ai/config';
 
 /**
@@ -138,15 +138,7 @@ const ModelSelector: React.FC<Props> = ({ currentModel, onModelChange, lang }) =
     return null;
   };
 
-  const getPricingInfo = (modelId: ClaudeModelId) => {
-    const pricing: Record<ClaudeModelId, { input: string; output: string }> = {
-      'claude-sonnet-4-20250514': { input: '$3/MTok', output: '$15/MTok' },
-      'claude-3-5-sonnet-20241022': { input: '$3/MTok', output: '$15/MTok' },
-      'claude-3-opus-20240229': { input: '$15/MTok', output: '$75/MTok' },
-      'claude-3-haiku-20240307': { input: '$0.25/MTok', output: '$1.25/MTok' },
-    };
-    return pricing[modelId] || { input: 'N/A', output: 'N/A' };
-  };
+  // Note: getPricingInfo reserved for future use when pricing display is needed
 
   // Close dropdown when clicking outside
   React.useEffect(() => {

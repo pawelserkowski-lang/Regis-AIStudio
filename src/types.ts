@@ -238,7 +238,7 @@ export const apiModelToConfig = (apiModel: APIModelInfo, provider: AIProvider = 
   const isOpus = id.includes('opus');
   const isHaiku = id.includes('haiku');
   const isGrokMini = id.includes('grok') && id.includes('mini');
-  const isGeminiLite = id.includes('lite');
+  // Note: isGeminiLite reserved for future use when lite models need special handling
 
   // Sensible defaults based on model type
   let maxTokens = 8192;

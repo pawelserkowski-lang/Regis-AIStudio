@@ -146,13 +146,33 @@ export function getModel(): AIModelId {
 }
 
 export function setModel(modelId: AIModelId): void {
+  const config = getConfigInternal();
+
   if (modelId.startsWith("claude")) {
     currentClaudeModel = modelId as ClaudeModelId;
-    log("INFO", "Model", `Claude model set to: ${modelId}`);
+    // Also switch provider to Claude
+    if (config?.hasClaudeKey) {
+      currentProvider = "claude";
+      log("INFO", "Model", `Claude model set to: ${modelId}, provider switched to claude`);
+    } else {
+      log("WARN", "Model", `Claude model ${modelId} selected but no API key - provider unchanged`);
+    }
   } else if (modelId.startsWith("gemini")) {
     currentGeminiModel = modelId as GeminiModelId;
     clearGeminiChat();
-    log("INFO", "Model", `Gemini model set to: ${modelId}`);
+    // Also switch provider to Gemini
+    if (config?.hasGeminiKey) {
+      currentProvider = "gemini";
+      log("INFO", "Model", `Gemini model set to: ${modelId}, provider switched to gemini`);
+    } else {
+      log("WARN", "Model", `Gemini model ${modelId} selected but no API key - provider unchanged`);
+    }
+  } else if (modelId.startsWith("grok")) {
+    // Handle Grok models - store in geminiModel as fallback for now
+    // TODO: Add dedicated Grok provider support
+    log("WARN", "Model", `Grok model ${modelId} selected - Grok provider not yet implemented`);
+  } else {
+    log("WARN", "Model", `Unknown model prefix for: ${modelId}`);
   }
 }
 
