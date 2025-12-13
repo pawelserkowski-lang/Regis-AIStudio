@@ -128,30 +128,51 @@ echo.
 echo   [STEP 3/6] Loading API Keys...
 echo   ------------------------------------------------------------
 
-:: Load variables from .env file
+:: Load variables from .env file (only if not already set in Windows environment)
+:: Windows environment variables take priority over .env file
 if exist ".env" (
     echo   Loading from .env file...
     for /f "usebackq tokens=1,* delims==" %%a in (".env") do (
         set "LINE=%%a"
         if not "!LINE:~0,1!"=="#" (
             if not "!LINE!"=="" (
-                set "%%a=%%b"
+                :: Only set if variable is not already defined (Windows env takes priority)
+                if not defined %%a (
+                    set "%%a=%%b"
+                ) else (
+                    :: Check if current value is empty or a placeholder
+                    call :check_and_set "%%a" "%%b"
+                )
             )
         )
     )
     echo   [OK] Environment loaded from .env
 )
+goto :after_env_helpers
 
-:: Check ANTHROPIC_API_KEY
+:check_and_set
+:: Helper to check if existing value is empty/placeholder and needs override
+set "VAR_NAME=%~1"
+set "NEW_VAL=%~2"
+:: Get current value
+call set "CUR_VAL=%%!VAR_NAME!%%"
+:: If current value is empty, use .env value
+if "!CUR_VAL!"=="" set "!VAR_NAME!=!NEW_VAL!"
+goto :eof
+
+:after_env_helpers
+
+:: Check ANTHROPIC_API_KEY and show source
 if defined ANTHROPIC_API_KEY (
     if not "!ANTHROPIC_API_KEY!"=="your_anthropic_api_key_here" (
         echo   [OK] ANTHROPIC_API_KEY configured
     ) else (
-        echo   [!] ANTHROPIC_API_KEY is placeholder - please set real key in .env
+        echo   [!] ANTHROPIC_API_KEY is placeholder - please set real key
+        echo       You can set it via Windows Environment Variables or .env file
     )
 ) else (
     echo   [!] ANTHROPIC_API_KEY not found
-    echo       Please add it to .env file
+    echo       Set via Windows Environment Variables or .env file
 )
 
 :: Check GOOGLE_API_KEY
@@ -159,10 +180,10 @@ if defined GOOGLE_API_KEY (
     if not "!GOOGLE_API_KEY!"=="your_gemini_api_key_here" (
         echo   [OK] GOOGLE_API_KEY configured
     ) else (
-        echo   [!] GOOGLE_API_KEY is placeholder (optional)
+        echo   [!] GOOGLE_API_KEY is placeholder [optional]
     )
 ) else (
-    echo   [!] GOOGLE_API_KEY not set (optional)
+    echo   [!] GOOGLE_API_KEY not set [optional]
 )
 echo.
 
