@@ -145,12 +145,73 @@ export const AVAILABLE_MODELS: AIModelConfig[] = [
 ];
 
 // Utility Functions
-export const getModelsByProvider = (provider: AIProvider): AIModelConfig[] => {
-  return AVAILABLE_MODELS.filter((m) => m.provider === provider);
+export const getModelsByProvider = (provider: AIProvider, models?: AIModelConfig[]): AIModelConfig[] => {
+  const modelList = models || AVAILABLE_MODELS;
+  return modelList.filter((m) => m.provider === provider);
 };
 
-export const getModelConfig = (modelId: AIModelId): AIModelConfig | undefined => {
-  return AVAILABLE_MODELS.find((m) => m.id === modelId);
+export const getModelConfig = (modelId: AIModelId | string, models?: AIModelConfig[]): AIModelConfig | undefined => {
+  const modelList = models || AVAILABLE_MODELS;
+  return modelList.find((m) => m.id === modelId);
+};
+
+// Interface for API-returned model info
+export interface APIModelInfo {
+  id: string;
+  name: string;
+  type?: string;
+  created_at?: string;
+}
+
+// Convert API model to AIModelConfig with sensible defaults
+export const apiModelToConfig = (apiModel: APIModelInfo): AIModelConfig => {
+  const id = apiModel.id;
+
+  // Determine capabilities based on model name patterns
+  const isOpus = id.includes('opus');
+  const isSonnet = id.includes('sonnet');
+  const isHaiku = id.includes('haiku');
+
+  // Sensible defaults based on model type
+  let maxTokens = 8192;
+  if (isOpus) maxTokens = 4096;
+  if (isHaiku) maxTokens = 4096;
+
+  return {
+    id: id as AIModelId,
+    name: apiModel.name || id,
+    provider: 'claude',
+    description: getModelDescription(id),
+    maxTokens,
+    supportsVision: true,  // All Claude 3+ models support vision
+    supportsStreaming: true,
+  };
+};
+
+// Generate description based on model ID
+const getModelDescription = (modelId: string): string => {
+  if (modelId.includes('opus')) return 'Most powerful - for complex tasks';
+  if (modelId.includes('sonnet-4')) return 'Latest Claude model - fast and intelligent';
+  if (modelId.includes('sonnet')) return 'Great balance between speed and quality';
+  if (modelId.includes('haiku')) return 'Fastest - for simple tasks';
+  return 'Claude AI model';
+};
+
+// Merge API models with fallback models (API models take priority)
+export const mergeModels = (apiModels: APIModelInfo[]): AIModelConfig[] => {
+  if (!apiModels || apiModels.length === 0) {
+    return AVAILABLE_MODELS;
+  }
+
+  // Convert API models to AIModelConfig
+  const convertedApiModels = apiModels
+    .filter(m => m.id && typeof m.id === 'string')
+    .map(apiModelToConfig);
+
+  // If we have API models, use them for Claude and keep Gemini from hardcoded
+  const geminiModels = AVAILABLE_MODELS.filter(m => m.provider === 'gemini');
+
+  return [...convertedApiModels, ...geminiModels];
 };
 
 // File System Types (for file browser)

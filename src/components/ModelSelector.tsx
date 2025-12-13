@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { ChevronDown, Zap, Brain, Sparkles, Gauge, Check } from 'lucide-react';
-import { AIModelId, ClaudeModelId, AVAILABLE_MODELS, getModelConfig } from '../types';
+import React, { useState, useEffect } from 'react';
+import { ChevronDown, Zap, Brain, Sparkles, Gauge, Check, RefreshCw, Loader2 } from 'lucide-react';
+import { AIModelId, ClaudeModelId, AVAILABLE_MODELS, getModelConfig, AIModelConfig, mergeModels, APIModelInfo } from '../types';
+import { fetchModels, getCachedModels } from '../services/ai/config';
 
 /**
  * Model Selector Component
  * Allows users to switch between different AI models dynamically
+ * Fetches available models from Claude API at startup
  */
 
 interface Props {
@@ -15,8 +17,62 @@ interface Props {
 
 const ModelSelector: React.FC<Props> = ({ currentModel, onModelChange, lang }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [availableModels, setAvailableModels] = useState<AIModelConfig[]>(AVAILABLE_MODELS);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [modelsError, setModelsError] = useState<string | null>(null);
 
-  const currentModelConfig = getModelConfig(currentModel);
+  // Fetch models on component mount
+  useEffect(() => {
+    const loadModels = async () => {
+      // Check if models are already cached
+      const cached = getCachedModels();
+      if (cached && cached.length > 0) {
+        setAvailableModels(mergeModels(cached as APIModelInfo[]));
+        return;
+      }
+
+      setIsLoadingModels(true);
+      setModelsError(null);
+
+      try {
+        const apiModels = await fetchModels();
+        if (apiModels && apiModels.length > 0) {
+          setAvailableModels(mergeModels(apiModels as APIModelInfo[]));
+        }
+      } catch (error) {
+        console.error('Failed to fetch models:', error);
+        setModelsError('Failed to load models from API');
+        // Keep using fallback models
+      } finally {
+        setIsLoadingModels(false);
+      }
+    };
+
+    loadModels();
+  }, []);
+
+  // Refresh models from API
+  const handleRefreshModels = async () => {
+    setIsLoadingModels(true);
+    setModelsError(null);
+
+    try {
+      // Clear cache and fetch fresh
+      const { clearModelsCache } = await import('../services/ai/config');
+      clearModelsCache();
+      const apiModels = await fetchModels();
+      if (apiModels && apiModels.length > 0) {
+        setAvailableModels(mergeModels(apiModels as APIModelInfo[]));
+      }
+    } catch (error) {
+      console.error('Failed to refresh models:', error);
+      setModelsError('Failed to refresh models');
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+
+  const currentModelConfig = getModelConfig(currentModel, availableModels);
 
   const t = lang === 'PL' ? {
     selectModel: 'Wybierz Model',
@@ -82,7 +138,7 @@ const ModelSelector: React.FC<Props> = ({ currentModel, onModelChange, lang }) =
     }
   }, [isOpen]);
 
-  const claudeModels = AVAILABLE_MODELS.filter(m => m.provider === 'claude');
+  const claudeModels = availableModels.filter(m => m.provider === 'claude');
 
   return (
     <div className="model-selector relative">
@@ -108,10 +164,29 @@ const ModelSelector: React.FC<Props> = ({ currentModel, onModelChange, lang }) =
         <div className="absolute top-full left-0 mt-2 w-96 bg-black/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
           {/* Header */}
           <div className="p-4 border-b border-white/10 bg-gradient-to-r from-purple-900/20 to-blue-900/20">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Brain className="w-4 h-4 text-purple-400" />
-              {t.claude}
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Brain className="w-4 h-4 text-purple-400" />
+                {t.claude}
+                {isLoadingModels && (
+                  <Loader2 className="w-3 h-3 text-purple-400 animate-spin" />
+                )}
+              </h3>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRefreshModels();
+                }}
+                disabled={isLoadingModels}
+                className="p-1.5 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
+                title={lang === 'PL' ? 'Odśwież listę modeli' : 'Refresh model list'}
+              >
+                <RefreshCw className={`w-4 h-4 text-slate-400 ${isLoadingModels ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+            {modelsError && (
+              <p className="text-[10px] text-red-400 mt-1">{modelsError}</p>
+            )}
           </div>
 
           {/* Model List */}
@@ -187,9 +262,10 @@ const ModelSelector: React.FC<Props> = ({ currentModel, onModelChange, lang }) =
           {/* Footer */}
           <div className="p-3 bg-white/5 text-center">
             <p className="text-[10px] text-slate-500">
+              {claudeModels.length} {lang === 'PL' ? 'modeli' : 'models'} •
               {lang === 'PL'
-                ? 'Model jest zapisywany dla bieżącej sesji'
-                : 'Model is saved for current session'}
+                ? ' Model jest zapisywany dla bieżącej sesji'
+                : ' Model is saved for current session'}
             </p>
           </div>
         </div>

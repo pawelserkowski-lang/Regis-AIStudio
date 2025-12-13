@@ -279,8 +279,80 @@ class RegisAPIHandler(BaseHTTPRequestHandler):
                 "anthropic_available": ANTHROPIC_AVAILABLE,
             })
 
+        elif self.path == "/api/models":
+            # Fetch available models from Claude API
+            self._handle_get_models()
+
         else:
             self._send_json(404, {"error": "Not Found"})
+
+    def _handle_get_models(self) -> None:
+        """Fetches available models from Claude API."""
+        if not ANTHROPIC_AVAILABLE:
+            self._send_json(500, {
+                "error": "Anthropic SDK not installed",
+                "type": "missing_dependency",
+                "models": []
+            })
+            return
+
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            self._send_json(401, {
+                "error": "ANTHROPIC_API_KEY not configured",
+                "type": "missing_api_key",
+                "models": []
+            })
+            return
+
+        try:
+            client = anthropic.Anthropic(api_key=api_key)
+
+            # Fetch models from Claude API
+            models_response = client.models.list()
+
+            # Convert to list of model info
+            models = []
+            for model in models_response.data:
+                model_info = {
+                    "id": model.id,
+                    "name": model.display_name if hasattr(model, 'display_name') else model.id,
+                    "type": model.type if hasattr(model, 'type') else "model",
+                    "created_at": model.created_at if hasattr(model, 'created_at') else None,
+                }
+                models.append(model_info)
+
+            log(f"MODELS: Fetched {len(models)} models from Claude API")
+
+            self._send_json(200, {
+                "models": models,
+                "count": len(models),
+                "provider": "claude"
+            })
+
+        except anthropic.APIError as e:
+            log(f"MODELS API ERROR: {e}")
+            error_str = str(e).lower()
+
+            if "authentication" in error_str or "api key" in error_str:
+                self._send_json(401, {
+                    "error": "Authentication failed. Check your Claude API key.",
+                    "type": "authentication_error",
+                    "models": []
+                })
+            else:
+                self._send_json(500, {
+                    "error": f"Failed to fetch models: {str(e)}",
+                    "type": "api_error",
+                    "models": []
+                })
+        except Exception as e:
+            log(f"MODELS UNEXPECTED ERROR: {e}\n{traceback.format_exc()}")
+            self._send_json(500, {
+                "error": f"Unexpected error: {str(e)}",
+                "type": "internal_error",
+                "models": []
+            })
 
     def do_POST(self) -> None:
         """Obsługuje POST requests."""

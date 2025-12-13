@@ -10,6 +10,17 @@ const FETCH_TIMEOUT = 5000; // 5 seconds
 
 let cachedConfig: AIConfig | null = null;
 
+// Cache for API-fetched models
+export interface APIModel {
+  id: string;
+  name: string;
+  type?: string;
+  created_at?: string;
+}
+
+let cachedModels: APIModel[] | null = null;
+let modelsFetchPromise: Promise<APIModel[]> | null = null;
+
 /**
  * Validates the structure of the config response
  */
@@ -96,4 +107,73 @@ export function getConfig(): AIConfig | null {
 
 export function getBackendUrl(): string {
   return BACKEND_URL;
+}
+
+/**
+ * Fetches available models from the Claude API via backend
+ * Returns cached models if available, otherwise fetches from API
+ */
+export async function fetchModels(): Promise<APIModel[]> {
+  // Return cached models if available
+  if (cachedModels !== null) {
+    return cachedModels;
+  }
+
+  // If a fetch is already in progress, wait for it
+  if (modelsFetchPromise !== null) {
+    return modelsFetchPromise;
+  }
+
+  log("INFO", "Config", "Fetching available models from API...");
+
+  modelsFetchPromise = (async () => {
+    try {
+      const response = await createFetchWithTimeout(`${BACKEND_URL}/api/models`, FETCH_TIMEOUT);
+
+      if (!response.ok) {
+        throw new Error(`Models fetch failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (data.models && Array.isArray(data.models)) {
+        cachedModels = data.models;
+        log("INFO", "Config", `Fetched ${data.models.length} models from API`);
+        return cachedModels;
+      }
+
+      throw new Error("Invalid models response structure");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+      if (error instanceof Error && error.name === "AbortError") {
+        log("ERROR", "Config", "Models fetch timed out after 5s", error);
+      } else {
+        log("ERROR", "Config", `Failed to fetch models: ${errorMessage}`, error);
+      }
+
+      // Return empty array on error - fallback to hardcoded models will be handled by caller
+      cachedModels = [];
+      return cachedModels;
+    } finally {
+      modelsFetchPromise = null;
+    }
+  })();
+
+  return modelsFetchPromise;
+}
+
+/**
+ * Returns cached models (null if not yet fetched)
+ */
+export function getCachedModels(): APIModel[] | null {
+  return cachedModels;
+}
+
+/**
+ * Clears the models cache to force a re-fetch
+ */
+export function clearModelsCache(): void {
+  cachedModels = null;
+  modelsFetchPromise = null;
 }
