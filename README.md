@@ -425,7 +425,7 @@ AI generates contextual action buttons:
    ```
 
 5. **Access Application:**
-   - Web: `http://localhost:3000`
+   - Web: `http://localhost:5173`
    - Chrome App: See Chrome App Mode section below
 
 ---
@@ -829,12 +829,12 @@ npm run self-repair      # Run diagnostics and repair
 2. **Start Frontend:**
    ```bash
    npm run dev
-   # Frontend runs on http://localhost:3000
+   # Frontend runs on http://localhost:5173
    # Proxies /api requests to backend
    ```
 
 3. **Access Application:**
-   - Browser: `http://localhost:3000`
+   - Browser: `http://localhost:5173`
    - Vite HMR: Instant updates on file changes
 
 ### Adding New AI Provider
