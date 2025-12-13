@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Code, Copy, Trash2, Edit3, Save, X, FileCode, Search, Filter, Download, Plus } from 'lucide-react';
+import { Code, Copy, Trash2, Edit3, Save, X, FileCode, Search, Download, Plus } from 'lucide-react';
 
 /**
  * Code Snippet Library Component

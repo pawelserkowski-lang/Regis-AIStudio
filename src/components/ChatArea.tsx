@@ -3,10 +3,9 @@ import { Bot, User, CornerDownLeft, FolderOpen, Power, HelpCircle, FileText, Fol
 import { Message, Sender, Attachment, AIModelId } from '../types';
 import { sendMessageStream, improvePrompt, setModel } from '../services/ai';
 import { executeSystemAction } from '../services/systemUtils';
-import MatrixLoader from './MatrixLoader';
 import PromptTemplates from './PromptTemplates';
 import KeyboardShortcutsHelp from './KeyboardShortcutsHelp';
-import { MessageSkeleton, LoadingSpinner, FileUploadLoader } from './LoadingSkeleton';
+import { MessageSkeleton, LoadingSpinner } from './LoadingSkeleton';
 import ModelSelector from './ModelSelector';
 
 interface ChatAreaProps {
@@ -232,9 +231,19 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
     setMessages(prev => [...prev, userMessage, { id: botMessageId, text: '', sender: Sender.BOT, timestamp: Date.now(), isStreaming: true }]);
     setInputValue(''); setAttachments([]); setDynamicSuggestions([]); setIsLoading(true);
     try {
-        await sendMessageStream(userMessage.text, userMessage.attachments || [], (chunk) => {
-            setMessages(prev => prev.map(msg => msg.id === botMessageId ? { ...msg, text: msg.text + chunk } : msg));
-        });
+        await sendMessageStream(
+            userMessage.text,
+            {
+                onToken: (chunk: string) => {
+                    setMessages(prev => prev.map(msg => msg.id === botMessageId ? { ...msg, text: msg.text + chunk } : msg));
+                },
+                onComplete: () => {},
+                onError: (err: Error) => {
+                    setMessages(prev => prev.map(msg => msg.id === botMessageId ? { ...msg, text: `Error: ${err.message}` } : msg));
+                }
+            },
+            userMessage.attachments?.map(att => ({ type: att.type, data: att.data || '', mimeType: att.mimeType }))
+        );
     } catch (error: any) {
         setMessages(prev => prev.map(msg => msg.id === botMessageId ? { ...msg, text: `Error: ${error.message}` } : msg));
     } finally { setIsLoading(false); setMessages(prev => prev.map(msg => msg.id === botMessageId ? { ...msg, isStreaming: false } : msg)); }

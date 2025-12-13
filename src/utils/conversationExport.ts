@@ -3,7 +3,7 @@
  * Export conversations to JSON, Markdown, and HTML formats
  */
 
-import { Message, ChatSession, Sender } from '../types';
+import { ChatSession, Sender } from '../types';
 
 /**
  * Export conversation to JSON format
