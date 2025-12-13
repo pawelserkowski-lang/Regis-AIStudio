@@ -1,6 +1,6 @@
 {
   "name": "Regis - AI Agent",
-  "description": "An intelligent knowledge registry and assistant powered by Gemini. Chat, organize, and visualize your ideas.",
+  "description": "An intelligent knowledge registry and assistant powered by Claude and Gemini AI. Chat, organize, and visualize your ideas with dual-AI support.",
   "requestFramePermissions": [
     "microphone"
   ]
