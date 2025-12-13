@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageSquare, Layers, Terminal, ScrollText, Globe, Clock, Copy, MonitorPlay, Activity } from 'lucide-react';
+import { MessageSquare, Layers, Terminal, ScrollText, Globe, Clock, Copy, MonitorPlay, Activity, Code } from 'lucide-react';
 import { View } from '../types';
 
 interface SidebarProps {
@@ -12,8 +12,8 @@ interface SidebarProps {
 }
 
 const LABELS = {
-  PL: { chat: 'Czat', history: 'Historia', live: 'Live', reg: 'Baza', logs: 'Logi', perf: 'Wydajność', prompts: 'OSTATNIE' },
-  EN: { chat: 'Chat', history: 'History', live: 'Live', reg: 'Base', logs: 'Logs', perf: 'Performance', prompts: 'RECENT' }
+  PL: { chat: 'Czat', history: 'Historia', live: 'Live', reg: 'Baza', snippets: 'Kod', logs: 'Logi', perf: 'Wydajność', prompts: 'OSTATNIE' },
+  EN: { chat: 'Chat', history: 'History', live: 'Live', reg: 'Base', snippets: 'Code', logs: 'Logs', perf: 'Performance', prompts: 'RECENT' }
 };
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, lang, setLang, promptHistory, onPromptSelect }) => {
@@ -23,6 +23,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, lang, setL
     { id: View.LIVE, icon: MonitorPlay, label: t.live },
     { id: View.HISTORY, icon: Clock, label: t.history },
     { id: View.REGISTRY, icon: Layers, label: t.reg },
+    { id: View.SNIPPETS, icon: Code, label: t.snippets },
     { id: View.LOGS, icon: ScrollText, label: t.logs },
     { id: View.PERFORMANCE, icon: Activity, label: t.perf },
   ];

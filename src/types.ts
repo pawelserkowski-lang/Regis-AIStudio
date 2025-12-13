@@ -52,6 +52,7 @@ export enum View {
   CHAT = "chat",
   HISTORY = "history",
   REGISTRY = "registry",
+  SNIPPETS = "snippets",
   LIVE = "live",
   LOGS = "logs",
   PERFORMANCE = "performance",

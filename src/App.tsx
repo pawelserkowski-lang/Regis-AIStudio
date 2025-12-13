@@ -8,6 +8,7 @@ import Launcher from './components/Launcher';
 import HistoryView from './components/HistoryView';
 import ErrorBoundary from './components/ErrorBoundary';
 import PerformanceMonitor from './components/PerformanceMonitor';
+import CodeSnippetLibrary from './components/CodeSnippetLibrary';
 import { View, Message, RegistryItem, Sender, ChatSession } from './types';
 import { systemLog, autoCurateRegistry } from './services/systemUtils';
 
@@ -265,6 +266,18 @@ const App: React.FC = () => {
                 case View.HISTORY: return <HistoryView lang={lang} sessions={sessions} setSessions={setSessions} onLoadSession={handleLoadSession} />;
                 case View.LIVE: return <LivePreview lang={lang} />;
                 case View.REGISTRY: return <Registry items={registryItems} onDeleteItem={handleDeleteRegistryItem} onDeleteAll={handleDeleteAllRegistry} lang={lang} />;
+                case View.SNIPPETS: return (
+                    <div className="h-full flex items-center justify-center p-8">
+                        <CodeSnippetLibrary
+                            lang={lang}
+                            onClose={() => setCurrentView(View.CHAT)}
+                            onInsert={(code) => {
+                                setChatInput(prev => prev + '\n' + code);
+                                setCurrentView(View.CHAT);
+                            }}
+                        />
+                    </div>
+                );
                 case View.LOGS: return <SystemLogs lang={lang} />;
                 case View.PERFORMANCE: return <PerformanceMonitor />;
                 default: return <div>View not found</div>;

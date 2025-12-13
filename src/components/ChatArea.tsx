@@ -1,12 +1,14 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Bot, User, CornerDownLeft, FolderOpen, Power, HelpCircle, FileText, Folder, Terminal, Paperclip, X, UploadCloud, Sparkles, LogOut, RefreshCw, Archive, ArrowUpLeft, Lightbulb, BookTemplate } from 'lucide-react';
-import { Message, Sender, Attachment } from '../types';
+import { Message, Sender, Attachment, AIModelId } from '../types';
 import { sendMessageStream, improvePrompt } from '../services/aiServiceAdapter';
+import { setModel } from '../services/ai';
 import { executeSystemAction } from '../services/systemUtils';
 import MatrixLoader from './MatrixLoader';
 import PromptTemplates from './PromptTemplates';
 import KeyboardShortcutsHelp from './KeyboardShortcutsHelp';
 import { MessageSkeleton, LoadingSpinner, FileUploadLoader } from './LoadingSkeleton';
+import ModelSelector from './ModelSelector';
 
 interface ChatAreaProps {
   messages: Message[];
@@ -58,9 +60,23 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
   const [isDragging, setIsDragging] = useState(false);
   const [dynamicSuggestions, setDynamicSuggestions] = useState<string[]>([]);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [currentModel, setCurrentModel] = useState<AIModelId>(() => {
+    // Load saved model from localStorage or default to Sonnet 4
+    try {
+      const saved = localStorage.getItem('regis_selected_model');
+      return (saved as AIModelId) || 'claude-sonnet-4-20250514';
+    } catch {
+      return 'claude-sonnet-4-20250514';
+    }
+  });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const processedMessageIds = useRef<Set<string>>(new Set());
+
+  // Initialize AI service with saved model on mount
+  useEffect(() => {
+    setModel(currentModel);
+  }, []); // Run once on mount
 
   // Cleanup old processed IDs to prevent memory leak
   useEffect(() => {
@@ -141,6 +157,16 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
   const handleSelectTemplate = (template: string) => {
       setInputValue(template);
       setShowTemplates(false);
+  };
+
+  const handleModelChange = (modelId: AIModelId) => {
+      setCurrentModel(modelId);
+      setModel(modelId); // Update the AI service with the new model
+      try {
+        localStorage.setItem('regis_selected_model', modelId);
+      } catch (error) {
+        console.error('Failed to save selected model:', error);
+      }
   };
 
   const navigateHistory = (direction: 'up' | 'down') => {
@@ -303,7 +329,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
                 </div>
             </div>
         </div>
-        <div className="flex gap-3 relative">
+        <div className="flex gap-3 relative items-center">
+            <ModelSelector currentModel={currentModel} onModelChange={handleModelChange} lang={lang} />
             <button type="button" onClick={() => setShowHelp(!showHelp)} className={`p-3 rounded-xl transition-all ${showHelp ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-500 hover:text-emerald-400 hover:bg-white/5'}`}><HelpCircle size={24} /></button>
             {showHelp && (<div className="absolute top-full right-0 mt-4 w-80 bg-slate-900/95 border border-emerald-500/30 p-6 rounded-2xl shadow-2xl z-[60] backdrop-blur-xl animate-in slide-in-from-top-2"><h3 className="text-emerald-400 font-bold mb-3 flex items-center gap-2"><Terminal size={16}/> COMMANDS</h3><ul className="space-y-2 text-sm text-slate-300 font-mono"><li><span className="text-emerald-500">/cmd [x]</span> Execute</li><li><span className="text-emerald-500">ls/dir</span> List</li></ul></div>)}
             <div className="relative">
