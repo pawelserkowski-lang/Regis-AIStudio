@@ -938,6 +938,9 @@ def run_server(port: int = 8000, host: str = "127.0.0.1") -> None:
         print("\n[INFO] Server stopped.")
 
 
+# Alias for local_server.py import
+handler = RegisAPIHandler
+
 if __name__ == "__main__":
     port = int(os.environ.get("BACKEND_PORT", 8000))
     run_server(port=port)
