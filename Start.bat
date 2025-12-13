@@ -1,48 +1,28 @@
 @echo off
 setlocal EnableDelayedExpansion
-chcp 65001 >nul 2>&1
 title Regis AI Studio - Launcher
 
 :: ============================================================================
-:: REGIS AI STUDIO - All-in-One Launcher
-:: ============================================================================
-:: Version: 4.0.0
-:: Description: Complete launcher with requirements checking, auto-installation,
-::              and browser launch
+:: REGIS AI STUDIO - All-in-One Launcher v4.0.0
 :: ============================================================================
 
 cd /d "%~dp0"
 
-:: Colors for Windows 10+
-set "GREEN=[92m"
-set "RED=[91m"
-set "YELLOW=[93m"
-set "CYAN=[96m"
-set "RESET=[0m"
-
-:: ============================================================================
-:: BANNER
-:: ============================================================================
 cls
 echo.
-echo   %CYAN%============================================================%RESET%
-echo   %CYAN%  ____  _____ ____ ___ ____       _    ___   %RESET%
-echo   %CYAN% |  _ \| ____/ ___|_ _/ ___|     / \  |_ _|  %RESET%
-echo   %CYAN% | |_) |  _|| |  _ | |\___ \    / _ \  | |   %RESET%
-echo   %CYAN% |  _ \| |__| |_| || | ___) |  / ___ \ | |   %RESET%
-echo   %CYAN% |_| \_\_____\____|___|____/  /_/   \_\___|  %RESET%
-echo   %CYAN%                                             %RESET%
-echo   %CYAN%                 S T U D I O                 %RESET%
-echo   %CYAN%============================================================%RESET%
-echo   %YELLOW%       All-in-One Launcher v4.0.0%RESET%
-echo   %CYAN%============================================================%RESET%
+echo   ============================================================
+echo.
+echo      REGIS AI STUDIO
+echo      All-in-One Launcher v4.0.0
+echo.
+echo   ============================================================
 echo.
 
 :: ============================================================================
 :: STEP 1: CHECK REQUIREMENTS
 :: ============================================================================
-echo   %CYAN%[STEP 1/6] Checking Requirements...%RESET%
-echo   %CYAN%------------------------------------------------------------%RESET%
+echo   [STEP 1/6] Checking Requirements...
+echo   ------------------------------------------------------------
 
 set "ALL_OK=1"
 
@@ -50,43 +30,43 @@ set "ALL_OK=1"
 echo   Checking Python...
 python --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo   %RED%[X] Python NOT FOUND%RESET%
+    echo   [X] Python NOT FOUND
     echo       Please install Python from https://python.org
     set "ALL_OK=0"
 ) else (
     for /f "tokens=*" %%i in ('python --version 2^>^&1') do set "PY_VER=%%i"
-    echo   %GREEN%[OK] !PY_VER!%RESET%
+    echo   [OK] !PY_VER!
 )
 
 :: Check Node.js
 echo   Checking Node.js...
 node --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo   %RED%[X] Node.js NOT FOUND%RESET%
+    echo   [X] Node.js NOT FOUND
     echo       Please install Node.js from https://nodejs.org
     set "ALL_OK=0"
 ) else (
     for /f "tokens=*" %%i in ('node --version 2^>^&1') do set "NODE_VER=%%i"
-    echo   %GREEN%[OK] Node.js !NODE_VER!%RESET%
+    echo   [OK] Node.js !NODE_VER!
 )
 
 :: Check npm
 echo   Checking npm...
 npm --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo   %RED%[X] npm NOT FOUND%RESET%
+    echo   [X] npm NOT FOUND
     set "ALL_OK=0"
 ) else (
     for /f "tokens=*" %%i in ('npm --version 2^>^&1') do set "NPM_VER=%%i"
-    echo   %GREEN%[OK] npm v!NPM_VER!%RESET%
+    echo   [OK] npm v!NPM_VER!
 )
 
 :: Check Backend file
 echo   Checking Backend...
 if exist "api\index.py" (
-    echo   %GREEN%[OK] api/index.py found%RESET%
+    echo   [OK] api/index.py found
 ) else (
-    echo   %RED%[X] api/index.py NOT FOUND%RESET%
+    echo   [X] api/index.py NOT FOUND
     set "ALL_OK=0"
 )
 
@@ -95,32 +75,32 @@ echo   Checking .env...
 if not exist ".env" (
     if exist ".env.example" (
         copy ".env.example" ".env" >nul
-        echo   %YELLOW%[!] Created .env from .env.example%RESET%
+        echo   [!] Created .env from .env.example
         echo       Please edit .env and add your API keys!
     ) else (
-        echo   %RED%[X] .env NOT FOUND%RESET%
+        echo   [X] .env NOT FOUND
         set "ALL_OK=0"
     )
 ) else (
-    echo   %GREEN%[OK] .env found%RESET%
+    echo   [OK] .env found
 )
 
 echo.
 if "!ALL_OK!"=="0" (
-    echo   %RED%[ERROR] Requirements check failed!%RESET%
-    echo   %RED%Please fix the issues above and try again.%RESET%
+    echo   [ERROR] Requirements check failed!
+    echo   Please fix the issues above and try again.
     echo.
     pause
     exit /b 1
 )
-echo   %GREEN%All requirements OK!%RESET%
+echo   All requirements OK!
 echo.
 
 :: ============================================================================
 :: STEP 2: INSTALL DEPENDENCIES
 :: ============================================================================
-echo   %CYAN%[STEP 2/6] Installing Dependencies...%RESET%
-echo   %CYAN%------------------------------------------------------------%RESET%
+echo   [STEP 2/6] Installing Dependencies...
+echo   ------------------------------------------------------------
 
 :: Python packages
 echo   Installing Python packages...
@@ -128,67 +108,67 @@ pip install anthropic python-dotenv google-generativeai -q --break-system-packag
 if %ERRORLEVEL% NEQ 0 (
     pip install anthropic python-dotenv google-generativeai -q 2>nul
 )
-echo   %GREEN%[OK] Python packages installed%RESET%
+echo   [OK] Python packages installed
 
 :: Node modules
 echo   Checking node_modules...
 if not exist "node_modules" (
     echo   Installing npm dependencies (this may take a minute)...
     call npm install --silent 2>nul
-    echo   %GREEN%[OK] npm dependencies installed%RESET%
+    echo   [OK] npm dependencies installed
 ) else (
-    echo   %GREEN%[OK] node_modules exists%RESET%
+    echo   [OK] node_modules exists
 )
 echo.
 
 :: ============================================================================
 :: STEP 3: LOAD API KEYS FROM ENVIRONMENT
 :: ============================================================================
-echo   %CYAN%[STEP 3/6] Checking API Keys...%RESET%
-echo   %CYAN%------------------------------------------------------------%RESET%
+echo   [STEP 3/6] Checking API Keys...
+echo   ------------------------------------------------------------
 
 if defined ANTHROPIC_API_KEY (
-    echo   %GREEN%[OK] ANTHROPIC_API_KEY configured%RESET%
+    echo   [OK] ANTHROPIC_API_KEY configured
 ) else (
-    echo   %YELLOW%[!] ANTHROPIC_API_KEY not in environment%RESET%
-    echo       Make sure it's set in .env file
+    echo   [!] ANTHROPIC_API_KEY not in environment
+    echo       Make sure it is set in .env file
 )
 
 if defined GOOGLE_API_KEY (
-    echo   %GREEN%[OK] GOOGLE_API_KEY configured%RESET%
+    echo   [OK] GOOGLE_API_KEY configured
 ) else (
-    echo   %YELLOW%[!] GOOGLE_API_KEY not set (optional)%RESET%
+    echo   [!] GOOGLE_API_KEY not set (optional)
 )
 echo.
 
 :: ============================================================================
 :: STEP 4: CLEANUP PORTS
 :: ============================================================================
-echo   %CYAN%[STEP 4/6] Cleaning Up Ports...%RESET%
-echo   %CYAN%------------------------------------------------------------%RESET%
+echo   [STEP 4/6] Cleaning Up Ports...
+echo   ------------------------------------------------------------
 
 :: Kill processes on ports 5173 and 8000
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :5173 ^| findstr LISTENING 2^>nul') do (
     taskkill /F /PID %%a >nul 2>&1
-    echo   %GREEN%[OK] Freed port 5173%RESET%
+    echo   [OK] Freed port 5173
 )
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000 ^| findstr LISTENING 2^>nul') do (
     taskkill /F /PID %%a >nul 2>&1
-    echo   %GREEN%[OK] Freed port 8000%RESET%
+    echo   [OK] Freed port 8000
 )
-echo   %GREEN%[OK] Ports cleaned%RESET%
+echo   [OK] Ports cleaned
 echo.
 
 :: ============================================================================
 :: STEP 5: START SERVERS
 :: ============================================================================
-echo   %CYAN%[STEP 5/6] Starting Servers...%RESET%
-echo   %CYAN%------------------------------------------------------------%RESET%
+echo   [STEP 5/6] Starting Servers...
+echo   ------------------------------------------------------------
 
 :: Start Backend
 echo   Starting Backend (port 8000)...
 start "REGIS-Backend" /MIN cmd /c "cd /d "%~dp0" && python api/index.py"
-echo   %GREEN%[OK] Backend started%RESET%
+echo   [OK] Backend started
 
 :: Wait for backend
 timeout /t 2 /nobreak >nul
@@ -196,7 +176,7 @@ timeout /t 2 /nobreak >nul
 :: Start Frontend
 echo   Starting Frontend (port 5173)...
 start "REGIS-Frontend" /MIN cmd /c "cd /d "%~dp0" && npm run dev"
-echo   %GREEN%[OK] Frontend started%RESET%
+echo   [OK] Frontend started
 
 :: Wait for frontend to be ready
 echo.
@@ -212,23 +192,23 @@ if %ERRORLEVEL% EQU 0 (
     goto wait_done
 )
 set /a WAIT+=1
-echo|set /p="."
+<nul set /p "=."
 goto wait_loop
 :wait_done
 echo.
 
 if "!READY!"=="1" (
-    echo   %GREEN%[OK] Frontend is ready!%RESET%
+    echo   [OK] Frontend is ready!
 ) else (
-    echo   %YELLOW%[!] Frontend may still be starting...%RESET%
+    echo   [!] Frontend may still be starting...
 )
 echo.
 
 :: ============================================================================
 :: STEP 6: LAUNCH BROWSER
 :: ============================================================================
-echo   %CYAN%[STEP 6/6] Launching Browser...%RESET%
-echo   %CYAN%------------------------------------------------------------%RESET%
+echo   [STEP 6/6] Launching Browser...
+echo   ------------------------------------------------------------
 
 :: Find Chrome or Edge
 set "BROWSER="
@@ -257,26 +237,27 @@ if defined BROWSER (
     echo   Opening in default browser...
     start http://localhost:5173
 )
-echo   %GREEN%[OK] Browser launched%RESET%
+echo   [OK] Browser launched
 echo.
 
 :: ============================================================================
 :: SUCCESS MESSAGE
 :: ============================================================================
-echo   %GREEN%============================================================%RESET%
-echo   %GREEN%        REGIS AI STUDIO IS RUNNING!%RESET%
-echo   %GREEN%============================================================%RESET%
+echo   ============================================================
 echo.
-echo   %CYAN%Frontend:%RESET%  http://localhost:5173
-echo   %CYAN%Backend:%RESET%   http://localhost:8000
-echo   %CYAN%Health:%RESET%    http://localhost:8000/api/health
+echo          REGIS AI STUDIO IS RUNNING!
 echo.
-echo   %YELLOW%Servers are running in minimized windows.%RESET%
-echo   %YELLOW%Close this window to keep servers running in background.%RESET%
-echo   %YELLOW%To stop: Close the REGIS-Backend and REGIS-Frontend windows.%RESET%
+echo   ============================================================
 echo.
-echo   %CYAN%============================================================%RESET%
+echo   Frontend:  http://localhost:5173
+echo   Backend:   http://localhost:8000
+echo   Health:    http://localhost:8000/api/health
+echo.
+echo   Servers are running in minimized windows.
+echo   Close this window to keep servers running in background.
+echo   To stop: Close the REGIS-Backend and REGIS-Frontend windows.
+echo.
+echo   ============================================================
 echo.
 
-:: Keep window open for user to see status
 pause
