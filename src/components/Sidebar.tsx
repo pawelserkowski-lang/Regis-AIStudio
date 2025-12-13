@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageSquare, Layers, Terminal, ScrollText, Globe, Clock, Copy, MonitorPlay, Activity, Code } from 'lucide-react';
+import { MessageSquare, Layers, Terminal, ScrollText, Globe, Clock, Copy, MonitorPlay, Activity, Code, Sparkles } from 'lucide-react';
 import { View } from '../types';
 
 interface SidebarProps {
@@ -12,14 +12,15 @@ interface SidebarProps {
 }
 
 const LABELS = {
-  PL: { chat: 'Czat', history: 'Historia', live: 'Live', reg: 'Baza', snippets: 'Kod', logs: 'Logi', perf: 'Wydajność', prompts: 'OSTATNIE' },
-  EN: { chat: 'Chat', history: 'History', live: 'Live', reg: 'Base', snippets: 'Code', logs: 'Logs', perf: 'Performance', prompts: 'RECENT' }
+  PL: { chat: 'Czat', history: 'Historia', live: 'Live', reg: 'Baza', snippets: 'Kod', logs: 'Logi', perf: 'Wydajność', prompts: 'OSTATNIE', tissaia: 'Tissaia' },
+  EN: { chat: 'Chat', history: 'History', live: 'Live', reg: 'Base', snippets: 'Code', logs: 'Logs', perf: 'Performance', prompts: 'RECENT', tissaia: 'Tissaia' }
 };
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, lang, setLang, promptHistory, onPromptSelect }) => {
   const t = LABELS[lang];
   const navItems = [
     { id: View.CHAT, icon: MessageSquare, label: t.chat },
+    { id: View.TISSAIA, icon: Sparkles, label: t.tissaia },
     { id: View.LIVE, icon: MonitorPlay, label: t.live },
     { id: View.HISTORY, icon: Clock, label: t.history },
     { id: View.REGISTRY, icon: Layers, label: t.reg },
