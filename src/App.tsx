@@ -9,6 +9,7 @@ import HistoryView from './components/HistoryView';
 import ErrorBoundary from './components/ErrorBoundary';
 import PerformanceMonitor from './components/PerformanceMonitor';
 import CodeSnippetLibrary from './components/CodeSnippetLibrary';
+import TissaiaPanel from './components/TissaiaPanel';
 import { View, Message, RegistryItem, Sender, ChatSession } from './types';
 import { systemLog, autoCurateRegistry } from './services/systemUtils';
 import { initializeAI } from './services/ai';
@@ -293,6 +294,7 @@ const App: React.FC = () => {
                 );
                 case View.LOGS: return <SystemLogs lang={lang} />;
                 case View.PERFORMANCE: return <PerformanceMonitor />;
+                case View.TISSAIA: return <TissaiaPanel lang={lang} />;
                 default: return <div>View not found</div>;
                 }
             })()}

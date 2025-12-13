@@ -56,6 +56,7 @@ export enum View {
   LIVE = "live",
   LOGS = "logs",
   PERFORMANCE = "performance",
+  TISSAIA = "tissaia",
 }
 
 // === AI PROVIDER TYPES ===
