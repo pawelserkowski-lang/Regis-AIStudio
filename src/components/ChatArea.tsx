@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Bot, User, CornerDownLeft, FolderOpen, Power, HelpCircle, FileText, Folder, Terminal, Paperclip, X, UploadCloud, Sparkles, LogOut, RefreshCw, Archive, ArrowUpLeft, Lightbulb } from 'lucide-react';
+import { Bot, User, CornerDownLeft, FolderOpen, Power, HelpCircle, FileText, Folder, Terminal, Paperclip, X, UploadCloud, Sparkles, LogOut, RefreshCw, Archive, ArrowUpLeft, Lightbulb, BookTemplate } from 'lucide-react';
 import { Message, Sender, Attachment } from '../types';
 import { sendMessageStream, improvePrompt } from '../services/aiServiceAdapter';
 import { executeSystemAction } from '../services/systemUtils';
 import MatrixLoader from './MatrixLoader';
+import PromptTemplates from './PromptTemplates';
 
 interface ChatAreaProps {
   messages: Message[];
@@ -54,6 +55,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
   const [files, setFiles] = useState<any[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [dynamicSuggestions, setDynamicSuggestions] = useState<string[]>([]);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const processedMessageIds = useRef<Set<string>>(new Set());
@@ -132,6 +134,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
       if (!inputValue.trim()) return;
       setIsImproving(true);
       try { const improved = await improvePrompt(inputValue); setInputValue(improved); } catch (e) { } finally { setIsImproving(false); }
+  };
+
+  const handleSelectTemplate = (template: string) => {
+      setInputValue(template);
+      setShowTemplates(false);
   };
 
   const navigateHistory = (direction: 'up' | 'down') => {
@@ -362,12 +369,21 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
             <div className="flex items-end gap-4 bg-black/80 backdrop-blur-2xl p-5 rounded-[2rem] border border-white/10 focus-within:border-emerald-500/50 transition-all">
                 <button type="button" onClick={() => setShowCwdInput(!showCwdInput)} className={`p-4 rounded-2xl transition-all ${showCwdInput ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/5 text-slate-400'}`} title="Browse Files"><FolderOpen size={32} /></button>
                 <label className="p-4 hover:bg-white/5 text-slate-400 rounded-2xl cursor-pointer transition-colors"><Paperclip size={32} /><input type="file" multiple className="hidden" onChange={async (e) => { if (e.target.files) { const files = Array.from(e.target.files); const newAttachments: Attachment[] = []; const errors: string[] = []; for (const file of files) { const result = await validateAndProcessFile(file); if (result.success && result.attachment) { newAttachments.push(result.attachment); } else if (result.error) { errors.push(result.error); console.error('File validation error:', result.error); } } if (errors.length > 0) { alert(errors.join('\n')); } if (newAttachments.length > 0) { setAttachments(prev => [...prev, ...newAttachments]); } e.target.value = ''; } }} /></label>
+                <button type="button" onClick={() => setShowTemplates(true)} className="p-4 rounded-2xl transition-all hover:bg-purple-500/20 text-slate-400 hover:text-purple-400" title="Prompt Templates"><BookTemplate size={32} /></button>
                 <button type="button" onClick={handleImprove} disabled={isImproving || !inputValue.trim()} className={`p-4 rounded-2xl transition-all ${isImproving ? 'text-emerald-400 animate-pulse' : 'text-slate-400 hover:text-emerald-400 hover:bg-white/5'}`} title="Improve Prompt (AI)"><Sparkles size={32} /></button>
                 <textarea value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} placeholder={isImproving ? t.improving : t.typeMsg} disabled={isImproving} rows={1} autoComplete="off" autoCorrect="off" spellCheck="false" className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none text-2xl text-slate-100 placeholder:text-slate-600 px-4 py-3 font-mono resize-none overflow-y-auto max-h-40" style={{minHeight: '4rem'}} />
                 <button type="button" onClick={() => handleSend()} disabled={isLoading || isImproving} className="p-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-[1.5rem] transition-all shadow-lg hover:shadow-emerald-500/20"><CornerDownLeft size={32} /></button>
             </div>
         </div>
       </div>
+
+      {showTemplates && (
+        <PromptTemplates
+          onSelectTemplate={handleSelectTemplate}
+          lang={lang}
+          onClose={() => setShowTemplates(false)}
+        />
+      )}
     </div>
   );
 };

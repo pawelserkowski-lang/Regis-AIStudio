@@ -7,6 +7,7 @@ import SystemLogs from './components/SystemLogs';
 import Launcher from './components/Launcher';
 import HistoryView from './components/HistoryView';
 import ErrorBoundary from './components/ErrorBoundary';
+import PerformanceMonitor from './components/PerformanceMonitor';
 import { View, Message, RegistryItem, Sender, ChatSession } from './types';
 import { systemLog, autoCurateRegistry } from './services/systemUtils';
 
@@ -248,14 +249,14 @@ const App: React.FC = () => {
             {(() => {
                 switch (currentView) {
                 case View.CHAT: return (
-                    <ChatArea 
-                        messages={messages} 
-                        setMessages={setMessages} 
-                        onSaveToRegistry={handleSaveToRegistry} 
-                        onAutoCurate={handleAutoCurate} 
-                        lang={lang} 
-                        promptHistory={promptHistory} 
-                        addToHistory={addToHistory} 
+                    <ChatArea
+                        messages={messages}
+                        setMessages={setMessages}
+                        onSaveToRegistry={handleSaveToRegistry}
+                        onAutoCurate={handleAutoCurate}
+                        lang={lang}
+                        promptHistory={promptHistory}
+                        addToHistory={addToHistory}
                         onArchive={handleArchiveSession}
                         inputValue={chatInput}
                         setInputValue={setChatInput}
@@ -265,6 +266,7 @@ const App: React.FC = () => {
                 case View.LIVE: return <LivePreview lang={lang} />;
                 case View.REGISTRY: return <Registry items={registryItems} onDeleteItem={handleDeleteRegistryItem} onDeleteAll={handleDeleteAllRegistry} lang={lang} />;
                 case View.LOGS: return <SystemLogs lang={lang} />;
+                case View.PERFORMANCE: return <PerformanceMonitor />;
                 default: return <div>View not found</div>;
                 }
             })()}
