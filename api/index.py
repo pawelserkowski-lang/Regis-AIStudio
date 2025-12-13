@@ -45,7 +45,9 @@ os.makedirs(LOG_DIR, exist_ok=True)
 
 
 def log(msg: str) -> None:
-    """Zapisuje wiadomość do logu z timestampem."""
+    """Zapisuje wiadomość do logu z timestampem (opcjonalne)."""
+    if os.environ.get("ENABLE_LOGGING", "true").lower() != "true":
+        return
     try:
         with open(LOG_FILE, "a", encoding="utf-8") as f:
             ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -55,7 +57,9 @@ def log(msg: str) -> None:
 
 
 def log_chat(role: str, content: str) -> None:
-    """Zapisuje interakcję czatu do pliku logu."""
+    """Zapisuje interakcję czatu do pliku logu (opcjonalne)."""
+    if os.environ.get("ENABLE_LOGGING", "true").lower() != "true":
+        return
     try:
         with open(CHAT_LOG, "a", encoding="utf-8") as f:
             ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -65,7 +69,9 @@ def log_chat(role: str, content: str) -> None:
 
 
 def log_ai_command(command: str, result: str, exit_code: int = 0) -> None:
-    """Zapisuje komendy wykonywane przez AI."""
+    """Zapisuje komendy wykonywane przez AI (opcjonalne)."""
+    if os.environ.get("ENABLE_LOGGING", "true").lower() != "true":
+        return
     try:
         with open(AI_COMMAND_LOG, "a", encoding="utf-8") as f:
             ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -81,6 +87,7 @@ def log_ai_command(command: str, result: str, exit_code: int = 0) -> None:
 def validate_api_key(key: Optional[str], provider: str) -> tuple[bool, Optional[str]]:
     """
     Validates API key format and returns (is_valid, error_message).
+    Relaxed validation - only checks if non-empty.
 
     Args:
         key: The API key to validate
@@ -100,15 +107,9 @@ def validate_api_key(key: Optional[str], provider: str) -> tuple[bool, Optional[
     if len(key) == 0:
         return False, f"{provider} API key is empty"
 
-    # Basic format validation
-    if provider == "claude":
-        # Anthropic keys typically start with 'sk-ant-'
-        if not key.startswith("sk-ant-") and len(key) < 20:
-            return False, f"Invalid {provider} API key format"
-    elif provider == "gemini":
-        # Google API keys are typically 39 characters
-        if len(key) < 20:
-            return False, f"Invalid {provider} API key format"
+    # Relaxed validation - just check minimum length (no strict format checking)
+    if len(key) < 10:
+        return False, f"{provider} API key is too short (minimum 10 characters)"
 
     return True, None
 
@@ -358,13 +359,9 @@ class RegisAPIHandler(BaseHTTPRequestHandler):
         system_prompt = data.get("system", "You are a helpful assistant.")
         stream = data.get("stream", True)
 
-        # Validate model name
-        if not isinstance(model, str) or len(model) == 0:
-            self._send_json(400, {
-                "error": "Invalid request: 'model' must be a non-empty string",
-                "type": "invalid_request"
-            })
-            return
+        # Relaxed model validation - let the API handle unknown models
+        if not isinstance(model, str):
+            model = "claude-sonnet-4-20250514"  # Fallback to default
 
         log(f"CLAUDE CHAT: model={model}, messages={len(messages)}, stream={stream}")
 
@@ -539,15 +536,22 @@ Odpowiedz TYLKO ulepszonym promptem, bez wyjaśnień.""",
                 })
                 return
 
-            # Security: Warn about potentially dangerous commands
-            dangerous_patterns = ["rm -rf", "del /f", "format ", "mkfs", "dd if="]
-            if any(pattern in cmd.lower() for pattern in dangerous_patterns):
-                log(f"WARNING: Potentially dangerous command blocked: {cmd}")
-                self._send_json(403, {
-                    "error": "Command blocked for safety reasons",
-                    "type": "forbidden_command"
-                })
-                return
+            # Security: Optional safety check (disabled by default for power users)
+            safe_mode = os.environ.get("SAFE_MODE", "false").lower() == "true"
+            if safe_mode:
+                dangerous_patterns = ["rm -rf", "del /f", "format ", "mkfs", "dd if="]
+                if any(pattern in cmd.lower() for pattern in dangerous_patterns):
+                    log(f"WARNING: Potentially dangerous command blocked: {cmd}")
+                    self._send_json(403, {
+                        "error": "Command blocked for safety reasons (SAFE_MODE=true)",
+                        "type": "forbidden_command"
+                    })
+                    return
+            else:
+                # Log warning but allow execution
+                dangerous_patterns = ["rm -rf", "del /f", "format ", "mkfs", "dd if="]
+                if any(pattern in cmd.lower() for pattern in dangerous_patterns):
+                    log(f"WARNING: Executing potentially dangerous command: {cmd}")
 
             # Windows command translation
             if platform.system() == "Windows":
@@ -564,7 +568,8 @@ Odpowiedz TYLKO ulepszonym promptem, bez wyjaśnień.""",
                     startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                     startupinfo.wShowWindow = subprocess.SW_HIDE
 
-                # Add timeout to prevent hanging
+                # Add timeout to prevent hanging (configurable via .env)
+                command_timeout = int(os.environ.get("COMMAND_TIMEOUT", "300"))  # Default 5 minutes
                 result = subprocess.run(
                     cmd,
                     shell=True,
@@ -574,7 +579,7 @@ Odpowiedz TYLKO ulepszonym promptem, bez wyjaśnień.""",
                     encoding="utf-8",
                     errors="replace",
                     startupinfo=startupinfo,
-                    timeout=30  # 30 second timeout
+                    timeout=command_timeout
                 )
 
                 # Log AI command execution
@@ -588,9 +593,10 @@ Odpowiedz TYLKO ulepszonym promptem, bez wyjaśnień.""",
                     "cmd_executed": cmd,
                 })
             except subprocess.TimeoutExpired:
+                command_timeout = int(os.environ.get("COMMAND_TIMEOUT", "300"))
                 log(f"COMMAND TIMEOUT: {cmd}")
                 self._send_json(408, {
-                    "error": "Command execution timeout (30s)",
+                    "error": f"Command execution timeout ({command_timeout}s)",
                     "type": "timeout_error",
                     "cmd_executed": cmd
                 })
