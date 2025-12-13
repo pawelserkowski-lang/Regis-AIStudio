@@ -13,7 +13,8 @@ import platform
 import datetime
 import sys
 import traceback
-from typing import Optional, Dict, Any
+import time
+from typing import Optional, Dict, Any, Callable, TypeVar, Any as AnyType
 
 # Próba importu python-dotenv
 try:
@@ -133,6 +134,75 @@ def get_api_keys() -> Dict[str, Optional[str]]:
         "gemini": gemini_key.strip() if gemini_key else None,
         "default_provider": os.environ.get("DEFAULT_AI_PROVIDER", "claude").lower(),
     }
+
+
+T = TypeVar('T')
+
+
+def retry_with_backoff(
+    func: Callable[[], T],
+    max_retries: int = 3,
+    initial_delay: float = 1.0,
+    max_delay: float = 10.0,
+    backoff_factor: float = 2.0,
+    retryable_exceptions: tuple = (Exception,)
+) -> T:
+    """
+    Retry a function with exponential backoff.
+
+    Args:
+        func: Function to retry
+        max_retries: Maximum number of retry attempts
+        initial_delay: Initial delay between retries (seconds)
+        max_delay: Maximum delay between retries (seconds)
+        backoff_factor: Multiplier for delay after each retry
+        retryable_exceptions: Tuple of exceptions that should trigger a retry
+
+    Returns:
+        Result of the function call
+
+    Raises:
+        The last exception if all retries fail
+    """
+    delay = initial_delay
+    last_exception = None
+
+    for attempt in range(max_retries + 1):
+        try:
+            return func()
+        except retryable_exceptions as e:
+            last_exception = e
+
+            # Don't retry on last attempt
+            if attempt == max_retries:
+                break
+
+            # Check if it's a retryable error
+            error_str = str(e).lower()
+            is_retryable = any(keyword in error_str for keyword in [
+                'rate limit',
+                'timeout',
+                'connection',
+                'network',
+                '429',
+                '503',
+                '504',
+                'overloaded'
+            ])
+
+            if not is_retryable:
+                # Non-retryable error, raise immediately
+                raise
+
+            log(f"RETRY: Attempt {attempt + 1}/{max_retries} failed: {str(e)[:100]}")
+            log(f"RETRY: Waiting {delay:.1f}s before next attempt...")
+
+            time.sleep(delay)
+            delay = min(delay * backoff_factor, max_delay)
+
+    # All retries exhausted
+    log(f"RETRY: All {max_retries} retries exhausted")
+    raise last_exception
 
 
 class RegisAPIHandler(BaseHTTPRequestHandler):
@@ -331,12 +401,22 @@ class RegisAPIHandler(BaseHTTPRequestHandler):
                 self._send_sse("[DONE]")
 
             else:
-                # Non-streaming response
-                response = client.messages.create(
-                    model=model,
-                    max_tokens=4096,
-                    system=system_prompt,
-                    messages=messages,
+                # Non-streaming response with retry logic
+                def make_api_call():
+                    return client.messages.create(
+                        model=model,
+                        max_tokens=4096,
+                        system=system_prompt,
+                        messages=messages,
+                    )
+
+                # Retry API call with exponential backoff
+                response = retry_with_backoff(
+                    func=make_api_call,
+                    max_retries=3,
+                    initial_delay=1.0,
+                    max_delay=10.0,
+                    retryable_exceptions=(Exception,)
                 )
 
                 # Log assistant response
@@ -411,18 +491,28 @@ class RegisAPIHandler(BaseHTTPRequestHandler):
 
         try:
             client = anthropic.Anthropic(api_key=api_key)
-            response = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=1024,
-                system="""Jesteś ekspertem od prompt engineering. 
+
+            def make_improve_call():
+                return client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=1024,
+                    system="""Jesteś ekspertem od prompt engineering.
 Otrzymujesz prompt użytkownika i musisz go ulepszyć, aby był:
 - Bardziej precyzyjny
 - Lepiej sformułowany
 - Zawierał kontekst jeśli brakuje
 Odpowiedz TYLKO ulepszonym promptem, bez wyjaśnień.""",
-                messages=[
-                    {"role": "user", "content": f"Ulepsz ten prompt:\n\n{original_prompt}"}
-                ],
+                    messages=[
+                        {"role": "user", "content": f"Ulepsz ten prompt:\n\n{original_prompt}"}
+                    ],
+                )
+
+            # Retry with exponential backoff
+            response = retry_with_backoff(
+                func=make_improve_call,
+                max_retries=2,  # Fewer retries for improve endpoint
+                initial_delay=1.0,
+                retryable_exceptions=(Exception,)
             )
             improved = response.content[0].text
             self._send_json(200, {"improved": improved})

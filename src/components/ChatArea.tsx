@@ -5,6 +5,7 @@ import { sendMessageStream, improvePrompt } from '../services/aiServiceAdapter';
 import { executeSystemAction } from '../services/systemUtils';
 import MatrixLoader from './MatrixLoader';
 import PromptTemplates from './PromptTemplates';
+import KeyboardShortcutsHelp from './KeyboardShortcutsHelp';
 
 interface ChatAreaProps {
   messages: Message[];
@@ -153,9 +154,22 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+      // Ctrl+Enter or just Enter (without Shift) to send
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+      // Ctrl+K to open templates
+      else if (e.key === 'k' && e.ctrlKey) { e.preventDefault(); setShowTemplates(true); }
+      // Ctrl+/ for help
+      else if (e.key === '/' && e.ctrlKey) { e.preventDefault(); setShowHelp(true); }
+      // Arrow keys for history navigation
       else if (e.key === 'ArrowUp') { e.preventDefault(); navigateHistory('up'); }
       else if (e.key === 'ArrowDown') { e.preventDefault(); navigateHistory('down'); }
+      // Escape to close menus
+      else if (e.key === 'Escape') {
+          setShowTemplates(false);
+          setShowHelp(false);
+          setShowCwdInput(false);
+          setShowPowerMenu(false);
+      }
   };
 
   const handleCommand = async (cmdText: string) => {
@@ -382,6 +396,13 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
           onSelectTemplate={handleSelectTemplate}
           lang={lang}
           onClose={() => setShowTemplates(false)}
+        />
+      )}
+
+      {showHelp && (
+        <KeyboardShortcutsHelp
+          lang={lang}
+          onClose={() => setShowHelp(false)}
         />
       )}
     </div>

@@ -337,6 +337,17 @@ const PromptTemplates: React.FC<Props> = ({ onSelectTemplate, lang, onClose }) =
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Handle Escape key to close
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const t = lang === 'PL'
     ? {
         title: 'Szablony Promptów',

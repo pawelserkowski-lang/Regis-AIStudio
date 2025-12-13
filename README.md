@@ -21,6 +21,66 @@ Regis AI Studio is a sophisticated dual-AI chat application built with React 19 
 
 ---
 
+## ✨ Key Features
+
+### 🎯 Performance Monitoring Dashboard
+Real-time system and API performance tracking with comprehensive metrics:
+- **API Monitoring**: Track total requests, success/failure rates, and error rates
+- **Response Time Analysis**: Average response time with historical trends
+- **Active Connections**: Monitor concurrent API calls
+- **Memory Usage**: Real-time memory consumption tracking
+- **Performance Charts**: Visual trends for response times, memory, and request rates
+- **Cost Estimation**: Token usage and estimated API costs
+- **Auto-Updates**: Metrics refresh every 5 seconds
+- **Pause/Resume**: Control monitoring to reduce overhead
+
+Access: Click **"Performance"** in the sidebar
+
+### 💾 Conversation History Export
+Export and share your conversations in multiple formats:
+- **JSON Export**: Structured data with full metadata
+- **Markdown Export**: Formatted text perfect for documentation
+- **HTML Export**: Beautiful standalone webpage with dark theme
+- **Bulk Export**: Export all conversations at once
+- **Clipboard Copy**: Quick copy in Markdown format
+- **Metadata Preservation**: Includes timestamps, models, and attachments
+
+Access: History view → Click download icon on any session or use bulk export buttons
+
+### 📚 Prompt Templates Library
+Pre-built professional templates for common development tasks:
+- **Code Review**: Comprehensive code analysis and suggestions
+- **Debugging**: Structured approach to finding and fixing bugs
+- **Documentation**: Generate complete documentation with examples
+- **Unit Tests**: Create comprehensive test suites
+- **Refactoring**: Improve code structure and quality
+- **Code Explanation**: Step-by-step code breakdowns
+- **API Design**: RESTful API planning and documentation
+- **Performance Optimization**: Identify and resolve bottlenecks
+
+**Categories**: Code, Debug, Documentation, Tests, Refactoring
+**Languages**: Polish & English
+**Access**: Chat input → Purple book icon 📘 or press `Ctrl+K`
+
+### ⌨️ Keyboard Shortcuts
+Speed up your workflow with powerful keyboard shortcuts:
+- `Enter` - Send message
+- `Shift+Enter` - New line in message
+- `Ctrl+K` - Open prompt templates
+- `Ctrl+/` - Show keyboard shortcuts help
+- `↑/↓` - Navigate through prompt history
+- `Esc` - Close dialogs and menus
+
+### 🔄 Enhanced Error Handling
+Robust retry logic with exponential backoff:
+- **Automatic Retries**: Up to 3 retry attempts for failed API calls
+- **Smart Detection**: Identifies retryable errors (rate limits, timeouts, network issues)
+- **Exponential Backoff**: 1s, 2s, 4s delays between retries
+- **Graceful Degradation**: Falls back to original prompt on failure
+- **Detailed Logging**: All retry attempts logged for debugging
+
+---
+
 ## 🏗️ Architecture
 
 ### System Architecture
