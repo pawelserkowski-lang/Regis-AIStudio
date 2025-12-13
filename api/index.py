@@ -35,6 +35,26 @@ except ImportError:
     print("[WARN] Anthropic SDK not installed.")
     print("[TIP] Run: pip install anthropic --break-system-packages")
 
+# Próba importu Google Generative AI SDK
+GOOGLE_AI_AVAILABLE = False
+try:
+    import google.generativeai as genai
+    GOOGLE_AI_AVAILABLE = True
+    print("[OK] Google Generative AI SDK available")
+except ImportError:
+    print("[WARN] Google Generative AI SDK not installed.")
+    print("[TIP] Run: pip install google-generativeai --break-system-packages")
+
+# OpenAI SDK for Grok (xAI uses OpenAI-compatible API)
+OPENAI_AVAILABLE = False
+try:
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
+    print("[OK] OpenAI SDK available (for Grok/xAI)")
+except ImportError:
+    print("[WARN] OpenAI SDK not installed (needed for Grok).")
+    print("[TIP] Run: pip install openai --break-system-packages")
+
 LOG_DIR = "logs"
 LOG_FILE = os.path.join(LOG_DIR, "server_log.txt")
 CHAT_LOG = os.path.join(LOG_DIR, "chat.log")
@@ -118,6 +138,7 @@ def get_api_keys() -> Dict[str, Optional[str]]:
     """Pobiera i waliduje klucze API z zmiennych środowiskowych."""
     claude_key = os.environ.get("ANTHROPIC_API_KEY")
     gemini_key = os.environ.get("GOOGLE_API_KEY")
+    grok_key = os.environ.get("XAI_API_KEY")
 
     # Validate keys if present
     if claude_key:
@@ -130,9 +151,15 @@ def get_api_keys() -> Dict[str, Optional[str]]:
         if not is_valid and error:
             log(f"WARNING: {error}")
 
+    if grok_key:
+        is_valid, error = validate_api_key(grok_key, "grok")
+        if not is_valid and error:
+            log(f"WARNING: {error}")
+
     return {
         "claude": claude_key.strip() if claude_key else None,
         "gemini": gemini_key.strip() if gemini_key else None,
+        "grok": grok_key.strip() if grok_key else None,
         "default_provider": os.environ.get("DEFAULT_AI_PROVIDER", "claude").lower(),
     }
 
@@ -265,10 +292,12 @@ class RegisAPIHandler(BaseHTTPRequestHandler):
             self._send_json(200, {
                 "claudeKey": "***" if keys["claude"] else None,
                 "geminiKey": keys["gemini"],  # Legacy - Gemini może być w frontend
+                "grokKey": "***" if keys["grok"] else None,
                 "envKey": keys["gemini"],  # Backwards compatibility
                 "defaultProvider": keys["default_provider"],
                 "hasClaudeKey": bool(keys["claude"]),
                 "hasGeminiKey": bool(keys["gemini"]),
+                "hasGrokKey": bool(keys["grok"]),
             })
 
         elif self.path == "/api/health":
@@ -282,6 +311,10 @@ class RegisAPIHandler(BaseHTTPRequestHandler):
         elif self.path == "/api/models":
             # Fetch available models from Claude API
             self._handle_get_models()
+
+        elif self.path == "/api/models/all":
+            # Fetch available models from all providers
+            self._handle_get_all_models()
 
         else:
             self._send_json(404, {"error": "Not Found"})
@@ -353,6 +386,119 @@ class RegisAPIHandler(BaseHTTPRequestHandler):
                 "type": "internal_error",
                 "models": []
             })
+
+    def _fetch_claude_models(self) -> Dict[str, Any]:
+        """Fetches available models from Claude API."""
+        if not ANTHROPIC_AVAILABLE:
+            return {"models": [], "error": "Anthropic SDK not installed"}
+
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            return {"models": [], "error": "ANTHROPIC_API_KEY not configured"}
+
+        try:
+            client = anthropic.Anthropic(api_key=api_key)
+            models_response = client.models.list()
+
+            models = []
+            for model in models_response.data:
+                model_info = {
+                    "id": model.id,
+                    "name": model.display_name if hasattr(model, 'display_name') else model.id,
+                    "type": model.type if hasattr(model, 'type') else "model",
+                    "created_at": model.created_at if hasattr(model, 'created_at') else None,
+                }
+                models.append(model_info)
+
+            log(f"CLAUDE MODELS: Fetched {len(models)} models")
+            return {"models": models, "count": len(models)}
+
+        except Exception as e:
+            log(f"CLAUDE MODELS ERROR: {e}")
+            return {"models": [], "error": str(e)}
+
+    def _fetch_gemini_models(self) -> Dict[str, Any]:
+        """Fetches available models from Google Gemini API."""
+        if not GOOGLE_AI_AVAILABLE:
+            return {"models": [], "error": "Google Generative AI SDK not installed"}
+
+        api_key = os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            return {"models": [], "error": "GOOGLE_API_KEY not configured"}
+
+        try:
+            genai.configure(api_key=api_key)
+
+            models = []
+            for model in genai.list_models():
+                # Filter for generative models that support content generation
+                if 'generateContent' in model.supported_generation_methods:
+                    model_id = model.name.replace('models/', '')
+                    model_info = {
+                        "id": model_id,
+                        "name": model.display_name if hasattr(model, 'display_name') else model_id,
+                        "type": "model",
+                    }
+                    models.append(model_info)
+
+            log(f"GEMINI MODELS: Fetched {len(models)} models")
+            return {"models": models, "count": len(models)}
+
+        except Exception as e:
+            log(f"GEMINI MODELS ERROR: {e}")
+            return {"models": [], "error": str(e)}
+
+    def _fetch_grok_models(self) -> Dict[str, Any]:
+        """Fetches available models from xAI Grok API."""
+        if not OPENAI_AVAILABLE:
+            return {"models": [], "error": "OpenAI SDK not installed (needed for Grok)"}
+
+        api_key = os.environ.get("XAI_API_KEY")
+        if not api_key:
+            return {"models": [], "error": "XAI_API_KEY not configured"}
+
+        try:
+            client = OpenAI(
+                api_key=api_key,
+                base_url="https://api.x.ai/v1"
+            )
+
+            models_response = client.models.list()
+
+            models = []
+            for model in models_response.data:
+                model_info = {
+                    "id": model.id,
+                    "name": model.id.replace('-', ' ').title(),
+                    "type": "model",
+                    "created_at": model.created if hasattr(model, 'created') else None,
+                }
+                models.append(model_info)
+
+            log(f"GROK MODELS: Fetched {len(models)} models")
+            return {"models": models, "count": len(models)}
+
+        except Exception as e:
+            log(f"GROK MODELS ERROR: {e}")
+            return {"models": [], "error": str(e)}
+
+    def _handle_get_all_models(self) -> None:
+        """Fetches available models from all configured providers."""
+        result = {
+            "claude": self._fetch_claude_models(),
+            "gemini": self._fetch_gemini_models(),
+            "grok": self._fetch_grok_models(),
+        }
+
+        total_count = (
+            len(result["claude"].get("models", [])) +
+            len(result["gemini"].get("models", [])) +
+            len(result["grok"].get("models", []))
+        )
+
+        log(f"ALL MODELS: Total {total_count} models fetched")
+
+        self._send_json(200, result)
 
     def do_POST(self) -> None:
         """Obsługuje POST requests."""
@@ -763,20 +909,23 @@ Odpowiedz TYLKO ulepszonym promptem, bez wyjaśnień.""",
 def run_server(port: int = 8000, host: str = "127.0.0.1") -> None:
     """Uruchamia serwer HTTP."""
     print(f"\n{'='*60}")
-    print(f"  🚀 REGIS AI STUDIO BACKEND v2.0.0-claude")
+    print(f"  🚀 REGIS AI STUDIO BACKEND v2.1.0")
     print(f"{'='*60}")
     print(f"  Server: http://{host}:{port}")
     print(f"  Anthropic SDK: {'✅ Available' if ANTHROPIC_AVAILABLE else '❌ Not installed'}")
+    print(f"  Google AI SDK: {'✅ Available' if GOOGLE_AI_AVAILABLE else '❌ Not installed'}")
+    print(f"  OpenAI SDK (Grok): {'✅ Available' if OPENAI_AVAILABLE else '❌ Not installed'}")
 
     keys = get_api_keys()
     print(f"  Claude API Key: {'✅ Configured' if keys['claude'] else '❌ Missing'}")
     print(f"  Gemini API Key: {'✅ Configured' if keys['gemini'] else '❌ Missing'}")
+    print(f"  Grok API Key: {'✅ Configured' if keys['grok'] else '❌ Missing'}")
     print(f"  Default Provider: {keys['default_provider']}")
     print(f"{'='*60}\n")
 
-    if not keys["claude"] and not keys["gemini"]:
+    if not keys["claude"] and not keys["gemini"] and not keys["grok"]:
         print("⚠️  WARNING: No API keys configured!")
-        print("   Create .env file with ANTHROPIC_API_KEY or GOOGLE_API_KEY")
+        print("   Create .env file with ANTHROPIC_API_KEY, GOOGLE_API_KEY, or XAI_API_KEY")
         print()
 
     server = HTTPServer((host, port), RegisAPIHandler)
