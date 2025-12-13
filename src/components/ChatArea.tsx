@@ -6,6 +6,7 @@ import { executeSystemAction } from '../services/systemUtils';
 import MatrixLoader from './MatrixLoader';
 import PromptTemplates from './PromptTemplates';
 import KeyboardShortcutsHelp from './KeyboardShortcutsHelp';
+import { MessageSkeleton, LoadingSpinner, FileUploadLoader } from './LoadingSkeleton';
 
 interface ChatAreaProps {
   messages: Message[];
@@ -333,7 +334,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
                 </div>
             </div>
             ))}
-            {isLoading && (<div className="flex items-center gap-3 text-slate-400 text-lg ml-24"><MatrixLoader /></div>)}
+            {isLoading && <MessageSkeleton />}
             <div ref={messagesEndRef} />
         </div>
         
@@ -384,9 +385,13 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, setMessages, onAutoCurate
                 <button type="button" onClick={() => setShowCwdInput(!showCwdInput)} className={`p-4 rounded-2xl transition-all ${showCwdInput ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/5 text-slate-400'}`} title="Browse Files"><FolderOpen size={32} /></button>
                 <label className="p-4 hover:bg-white/5 text-slate-400 rounded-2xl cursor-pointer transition-colors"><Paperclip size={32} /><input type="file" multiple className="hidden" onChange={async (e) => { if (e.target.files) { const files = Array.from(e.target.files); const newAttachments: Attachment[] = []; const errors: string[] = []; for (const file of files) { const result = await validateAndProcessFile(file); if (result.success && result.attachment) { newAttachments.push(result.attachment); } else if (result.error) { errors.push(result.error); console.error('File validation error:', result.error); } } if (errors.length > 0) { alert(errors.join('\n')); } if (newAttachments.length > 0) { setAttachments(prev => [...prev, ...newAttachments]); } e.target.value = ''; } }} /></label>
                 <button type="button" onClick={() => setShowTemplates(true)} className="p-4 rounded-2xl transition-all hover:bg-purple-500/20 text-slate-400 hover:text-purple-400" title="Prompt Templates"><BookTemplate size={32} /></button>
-                <button type="button" onClick={handleImprove} disabled={isImproving || !inputValue.trim()} className={`p-4 rounded-2xl transition-all ${isImproving ? 'text-emerald-400 animate-pulse' : 'text-slate-400 hover:text-emerald-400 hover:bg-white/5'}`} title="Improve Prompt (AI)"><Sparkles size={32} /></button>
+                <button type="button" onClick={handleImprove} disabled={isImproving || !inputValue.trim()} className={`p-4 rounded-2xl transition-all ${isImproving ? 'text-emerald-400' : 'text-slate-400 hover:text-emerald-400 hover:bg-white/5'}`} title="Improve Prompt (AI)">
+                    {isImproving ? <LoadingSpinner size="sm" className="text-emerald-400" /> : <Sparkles size={32} />}
+                </button>
                 <textarea value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown} placeholder={isImproving ? t.improving : t.typeMsg} disabled={isImproving} rows={1} autoComplete="off" autoCorrect="off" spellCheck="false" className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none text-2xl text-slate-100 placeholder:text-slate-600 px-4 py-3 font-mono resize-none overflow-y-auto max-h-40" style={{minHeight: '4rem'}} />
-                <button type="button" onClick={() => handleSend()} disabled={isLoading || isImproving} className="p-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-[1.5rem] transition-all shadow-lg hover:shadow-emerald-500/20"><CornerDownLeft size={32} /></button>
+                <button type="button" onClick={() => handleSend()} disabled={isLoading || isImproving} className="p-6 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-[1.5rem] transition-all shadow-lg hover:shadow-emerald-500/20">
+                    {isLoading ? <LoadingSpinner size="sm" /> : <CornerDownLeft size={32} />}
+                </button>
             </div>
         </div>
       </div>
