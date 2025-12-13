@@ -4,7 +4,7 @@ import { MonitorPlay, RefreshCw, ExternalLink, Globe, AlertCircle } from 'lucide
 interface Props { lang: 'PL' | 'EN'; }
 
 const STORAGE_KEY = 'regis_live_preview_url';
-const DEFAULT_URL = 'http://localhost:3000';
+const DEFAULT_URL = 'http://localhost:5173';
 
 const LivePreview: React.FC<Props> = ({ lang }) => {
     // Load URL from localStorage or use default
